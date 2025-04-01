@@ -1,0 +1,23 @@
+[package]
+name = "pdf_encoding"
+version = "0.4.0"
+authors = ["Sandip Dey <sandip.dey1988.yahoo.com>", "Sebastian Köln <s3bk@protonmail.com>"]
+edition = "2021"
+license = "BSD-3-Clause"
+description = "Font related encodings"
+
+readme = "README.md"
+
+include = [
+    "agl-aglfn/glyphlist.txt",
+    "src",
+    "build.rs",
+    "README.md",
+]
+
+exclude = [
+    "encodings"
+]
+
+[dependencies]
+lazy_static = "1.4"
