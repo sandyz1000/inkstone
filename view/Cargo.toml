@@ -1,0 +1,57 @@
+[package]
+name = "pdf_view"
+version = "0.1.0"
+authors = ["Sebastian Köln <s3bk@protonmail.com>"]
+edition = "2021"
+
+[features]
+unstable = []
+
+[dependencies.pdf]
+workspace = true
+default-features = false
+features = ["dump"]
+
+[dependencies]
+pathfinder_renderer = { workspace = true }
+pathfinder_geometry = { workspace = true }
+pathfinder_color = { workspace = true }
+pathfinder_resources = { workspace = true }
+pathfinder_content = { workspace = true }
+pathfinder_export = { workspace = true }
+pathfinder_webgl = { workspace = true }
+pathfinder_gl = { workspace = true }
+log = { workspace = true }
+structopt = "0.3"
+pdf_render = { path = "../render" }
+font = { path = "../font" }
+pdf_encoding = { path = "../encoding" }
+# pdf_encoding = "0.1"
+itertools = { workspace = true }
+image = { workspace = true }
+
+wasm-bindgen = "0.2.48"
+js-sys = "0.3"
+web-sys = { version = "*", features = [
+    "HtmlCanvasElement",
+    "WebGl2RenderingContext",
+] }
+console_log = "1.0.0"
+console_error_panic_hook = "0.1.6"
+getrandom = { version = "0.2.3", features = ["js"] }
+
+[dev-dependencies]
+criterion = "0.5.1"
+
+[target.'cfg(unix)'.dependencies]
+env_logger = { workspace = true }
+pathfinder_gl = { workspace = true }
+gl = "0.14.0"
+glutin = "0.32.0"
+glutin-winit = "0.5.0"
+winit = "0.30.4"
+tuple = "0.5"
+raw-window-handle = "0.6.2"
+
+[lib]
+crate-type = ["cdylib", "rlib"]

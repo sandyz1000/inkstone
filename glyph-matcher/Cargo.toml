@@ -1,0 +1,17 @@
+[package]
+name = "glyphmatcher"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+font = { path = "../font", features=["cff", "opentype"] }
+pdf_encoding = { path = "../encoding" }
+pathfinder_content = { workspace=true }
+pathfinder_geometry = { workspace=true }
+itertools = "*"
+serde = { version = "*", features = ["derive"] }
+postcard = { version = "1.0", features = ["alloc"] }
+istring = { git = "https://github.com/s3bk/istring", features = ["serialize"] }
+serde_json = "*"
