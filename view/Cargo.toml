@@ -1,8 +1,9 @@
 [package]
 name = "pdf_view"
 version = "0.1.0"
-authors = ["Sebastian Köln <s3bk@protonmail.com>"]
-edition = "2021"
+authors.workspace = true
+edition.workspace = true
+description = ""
 
 [features]
 unstable = []

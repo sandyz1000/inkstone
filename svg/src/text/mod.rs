@@ -144,32 +144,34 @@ fn compute_joining(meta: &mut [MetaGlyph]) {
         
         match prev.joining_type {
             JoiningType::LeftJoining | JoiningType::DualJoining | JoiningType::JoinCausing => {
-                match next.joining_type {
-                    JoiningType::RightJoining | JoiningType::DualJoining | JoiningType::JoinCausing => {
-                        next.location = GlyphLocation::Final;
+                        match next.joining_type {
+                            JoiningType::RightJoining | JoiningType::DualJoining | JoiningType::JoinCausing => {
+                                                        next.location = GlyphLocation::Final;
                     
-                        prev.location = match prev.location {
-                            GlyphLocation::Isolated => GlyphLocation::Initial,
-                            GlyphLocation::Final => GlyphLocation::Middle,
-                            loc => loc,
+                                                        prev.location = match prev.location {
+                                                            GlyphLocation::Isolated => GlyphLocation::Initial,
+                                                            GlyphLocation::Final => GlyphLocation::Middle,
+                                                            loc => loc,
+                                                        }
+                                                    }
+                            JoiningType::LeftJoining | JoiningType::NonJoining => {
+                                                        prev.location = match prev.location {
+                                                            GlyphLocation::Initial => GlyphLocation::Isolated,
+                                                            loc => loc,
+                                                        };
+                                                    }
+                            JoiningType::Transparent => {}
+                            _ => unimplemented!(),
                         }
                     }
-                    JoiningType::LeftJoining | JoiningType::NonJoining => {
+            JoiningType::RightJoining | JoiningType::NonJoining => {
                         prev.location = match prev.location {
                             GlyphLocation::Initial => GlyphLocation::Isolated,
                             loc => loc,
                         };
                     }
-                    JoiningType::Transparent => {}
-                }
-            }
-            JoiningType::RightJoining | JoiningType::NonJoining => {
-                prev.location = match prev.location {
-                    GlyphLocation::Initial => GlyphLocation::Isolated,
-                    loc => loc,
-                };
-            }
             JoiningType::Transparent => {}
+            _ => unimplemented!(),
         }
     }
 }

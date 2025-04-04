@@ -1,9 +1,6 @@
 use std::collections::HashMap;
 use nom::{
-    number::complete::{be_u16, be_u32},
-    multi::count,
-    bytes::complete::take,
-    sequence::tuple,
+    bytes::complete::take, multi::count, number::complete::{be_u16, be_u32}, Parser
 };
 use crate::{GlyphId, FontError};
 use crate::parsers::{iterator_n};
@@ -175,7 +172,7 @@ fn parse_ligatures(data: &[u8]) -> Result<Substitution, FontError> {
             let data = slice!(set_data, set_offest as usize ..);
             let (i, ligature_glyph) = be_u16(data)?;
             let (i, component_count) = be_u16(i)?;
-            let (_, components) = count(be_u16, component_count as usize - 1)(i)?;
+            let (_, components) = count(|s| be_u16(s), component_count as usize - 1).parse(i)?;
             
             entry.push((GlyphList(components), ligature_glyph));
         }
@@ -197,8 +194,14 @@ impl StateMachine {
 
 fn parse_script_list(data: &[u8]) -> Result<Vec<Script>, FontError> {
     let (i, script_count) = be_u16(data)?;
+    let parser = |s| {
+        let (s, sx): (&[u8], &[u8]) = take(4usize)(s)?;
+        let (s, sy) = be_u16(s)?;
+        Ok((s, (sx, sy)))
+    };
+    
     let mut scripts = Vec::with_capacity(script_count as usize);
-    for (tag, offset) in iterator_n(i, tuple((take(4usize), be_u16)), script_count) {
+    for (tag, offset) in iterator_n(i, parser, script_count) {
         scripts.push(parse_script_table(slice!(data, offset as usize .. ))?);
     }
     Ok(scripts)
@@ -213,7 +216,12 @@ fn parse_script_table(data: &[u8]) -> Result<Script, FontError> {
 
     let (i, lang_sys_count) = be_u16(i)?;
     let mut languages = Vec::with_capacity(lang_sys_count as usize);
-    for (tag, lang_sys_offset) in iterator_n(i, tuple((tag, be_u16)), lang_sys_count) {
+    let parser = |s| {
+        let (s, sx) = tag(s)?;
+        let (s, sy) = be_u16(s)?;
+        Ok((s, (sx, sy)))
+    };
+    for (tag, lang_sys_offset) in iterator_n(i, parser, lang_sys_count) {
         let table = parse_language_system_table(slice!(data, lang_sys_offset as usize ..))?;
         languages.push((tag, table));
     }
@@ -259,7 +267,12 @@ fn parse_language_system_table(i: &[u8]) -> Result<LanguageSystem, FontError> {
 fn parse_feature_list(data: &[u8]) -> Result<Vec<Feature>, FontError> {
     let (i, feature_count) = be_u16(data)?;
     let mut features = Vec::with_capacity(feature_count as usize);
-    for (tag, feature_offset) in iterator_n(i, tuple((tag, be_u16)), feature_count) {
+    let parser = |s| {
+        let (s, sx) = tag(s)?;
+        let (s, sy) = be_u16(s)?;
+        Ok((s, (sx, sy)))
+    };
+    for (tag, feature_offset) in iterator_n(i, parser, feature_count) {
         let lookup_indices = parse_feature_table(slice!(data, feature_offset as usize ..))?.collect();
         features.push(Feature {
             tag,

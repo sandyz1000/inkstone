@@ -999,8 +999,8 @@ impl Vm {
 
             Operator::Abs => {
                 let out = match self.pop() {
-                    Item::Real(r) => Item::Real(R32::from(r.into_inner().abs())),
-                    Item::Int(i32::MIN) => Item::Real(-R32::from(i32::MIN as f32)),
+                    Item::Real(r) => Item::Real(R32::try_new(r.into_inner().abs()).expect("Unable to parse floating point number")),
+                    Item::Int(i32::MIN) => Item::Real(R32::try_new(-(i32::MIN as f32)).unwrap()),
                     Item::Int(i) => Item::Int(i.abs()),
                     arg => error!("abs: unsupported arg {:?})", self.display(arg))
                 };
@@ -1010,12 +1010,12 @@ impl Vm {
                 let out = match self.pop_tuple()? {
                     (Item::Int(a), Item::Int(b)) => match a.checked_add(b) {
                         Some(c) => Item::Int(c),
-                        None => Item::Real(R32::from(a as f32) + R32::from(b as f32))
+                        None => Item::Real(R32::try_new(a as f32 + b as f32).expect("Invalid floating-point number"))
                     },
                     (Item::Real(a), Item::Real(b)) => Item::Real(a + b),
                     (Item::Int(a), Item::Real(b)) |
                     (Item::Real(b), Item::Int(a)) =>
-                        Item::Real(R32::from(a as f32) + b),
+                        Item::Real(R32::try_new(a as f32).expect("Invalid floating-point number") + b),
                     (arg1, arg2) => error!("add: unsupported args {:?} {:?})", self.display(arg1), self.display(arg2))
                 };
                 self.push(out);
@@ -1024,11 +1024,11 @@ impl Vm {
                 let out = match self.pop_tuple()? {
                     (Item::Int(a), Item::Int(b)) => match a.checked_sub(b) {
                         Some(c) => Item::Int(c),
-                        None => Item::Real(R32::from(a as f32) - R32::from(b as f32))
+                        None => Item::Real(R32::try_new(a as f32 - b as f32).expect("Invalid floating-point number"))
                     },
                     (Item::Real(a), Item::Real(b)) => Item::Real(a - b),
-                    (Item::Int(a), Item::Real(b)) => Item::Real(R32::from(a as f32) - b),
-                    (Item::Real(a), Item::Int(b)) => Item::Real(a - R32::from(b as f32)),
+                    (Item::Int(a), Item::Real(b)) => Item::Real(R32::try_new(a as f32).expect("Invalid floating-point number") - b),
+                    (Item::Real(a), Item::Int(b)) => Item::Real(a - R32::try_new(b as f32).expect("Invalid floating-point number")),
                     (arg1, arg2) => error!("sub: unsupported args {:?} {:?})", self.display(arg1), self.display(arg2))
                 };
                 self.push(out);
@@ -1037,12 +1037,12 @@ impl Vm {
                 let out = match self.pop_tuple()? {
                     (Item::Int(a), Item::Int(b)) => match a.checked_mul(b) {
                         Some(c) => Item::Int(c),
-                        None => Item::Real(R32::from(a as f32) * R32::from(b as f32))
+                        None => Item::Real(R32::try_new(a as f32 * b as f32).expect("Invalid floating-point number"))
                     },
                     (Item::Real(a), Item::Real(b)) => Item::Real(a * b),
                     (Item::Int(a), Item::Real(b)) |
                     (Item::Real(b), Item::Int(a)) =>
-                        Item::Real(R32::from(a as f32) * b),
+                        Item::Real(R32::try_new(a as f32).expect("Invalid floating-point number") * b),
                     (arg1, arg2) => error!("mul: unsupported args {:?} {:?})", self.display(arg1), self.display(arg2))
                 };
                 self.push(out);

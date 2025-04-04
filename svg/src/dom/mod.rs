@@ -7,8 +7,9 @@ pub mod prelude {
         transform2d::Transform2F,
         rect::RectF,
     };
-    pub use crate::{
-        Item, Tag, ParseNode, TagDefs,
+    
+    pub use crate::dom::{
+        Tag, ParseNode, TagDefs,
         animate::*,
         attrs::*,
         ellipse::*,

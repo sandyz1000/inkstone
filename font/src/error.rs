@@ -1,6 +1,6 @@
 use nom::{
     Err,
-    error::{VerboseError, VerboseErrorKind},
+    error::{Error as NomError, ErrorKind},
 };
 
 
@@ -8,7 +8,7 @@ use nom::{
 pub enum FontError {
     ParseCharString,
     NoSuchSlot,
-    Parse(Err<Vec<VerboseErrorKind>>),
+    Parse(Err<Vec<ErrorKind>>),
     UnknownMagic([u8; 4]),
     Other(String),
     TypeError(&'static str),
@@ -20,9 +20,9 @@ pub enum FontError {
     Context(&'static str, u32, Box<FontError>)
 }
 
-impl<'a> From<Err<VerboseError<&'a [u8]>>> for FontError {
-    fn from(e: Err<VerboseError<&'a [u8]>>) -> Self {
-        FontError::Parse(e.map(|e| e.errors.into_iter().map(|(_, k)| k).collect()))
+impl<'a> From<Err<NomError<&'a [u8]>>> for FontError {
+    fn from(e: Err<NomError<&'a [u8]>>) -> Self {
+        FontError::Parse(e.map(|e| vec![e.code]))
     }
 }
 
@@ -105,10 +105,11 @@ macro_rules! get {
     ($var:expr $(, $item:expr)*) => ({
         let v = &$var;
         $(
-        let v = match v.get($item) {
-            Some(v) => v,
-            None => return Err(crate::FontError::Get(file!(), line!(), stringify!($item)))
-        }; )*
+            let v = match v.get($item) {
+                Some(v) => v,
+                None => return Err(crate::FontError::Get(file!(), line!(), stringify!($item)))
+            }; 
+        )*
         v
     });
 }

@@ -12,4 +12,4 @@ pdf_render = { path = "../../render" }
 argh = "0.1.12"
 rasterize = { path = "../rasterize" }
 pathfinder_geometry = { workspace = true }
-env_logger = "0.11.5"
+env_logger = { workspace = true }

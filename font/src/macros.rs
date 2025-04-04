@@ -48,7 +48,7 @@ macro_rules! table {
         pub struct $name {
             $(
                 $(#[$meta])*
-                pub $field: <$parser as Parser>::Output,
+                pub $field: <$parser as OtherParser>::Output,
             )*
         }
         impl NomParser for $name {

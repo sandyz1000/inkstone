@@ -1,4 +1,4 @@
-use roxmltree::{Error as XmlError};
+use roxmltree::Error as XmlError;
 use svgtypes::Error as SvgError;
 use std::num::ParseFloatError;
 use std::str::Utf8Error;

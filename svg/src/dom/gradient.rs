@@ -1,8 +1,4 @@
-use crate::prelude::*;
-use pathfinder_content::gradient::{Gradient};
-use pathfinder_color::{ColorU};
-use pathfinder_geometry::line_segment::LineSegment2F;
-use pathfinder_simd::default::F32x2;
+use pathfinder_color::ColorU;
 use svgtypes::Color;
 
 #[derive(Debug)]
@@ -127,7 +123,7 @@ impl TagStop {
     }
 
     pub fn color_u(&self, opacity: f32) -> ColorU {
-        let Color { red, green, blue } = self.color;
+        let Color { red, green, blue, alpha } = self.color;
         let alpha = (opacity * self.opacity * 255.) as u8;
         ColorU::new(red, green, blue, alpha)
     }

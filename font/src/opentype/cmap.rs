@@ -5,7 +5,6 @@ use crate::{GlyphId, parsers::*, FontError};
 use nom::{
     number::complete::{be_u8, be_u16, be_u32, be_u24},
     bytes::complete::take,
-    sequence::tuple,
 };
 use tuple::T4;
 
@@ -78,10 +77,17 @@ pub fn parse_cmap(input: &[u8]) -> Result<(CMap, Encoding), FontError> {
     let mut cmap3 = Vec::new();
     let mut cmap_encoding = None;
 
-    let have_unicode = iterator(i, tuple((be_u16, be_u16, be_u32))).take(num_tables as usize)
+    fn _cu_parser<'a>(s: &'a [u8]) -> nom::IResult<&'a [u8], (u16, u16, u32)> {
+        let (s, sx) = be_u16(s)?;
+        let (s, sy) = be_u16(s)?;
+        let (s, sz) = be_u32(s)?;
+        Ok((s, (sx, sy, sz)))
+    }
+
+    let have_unicode = iterator(i, _cu_parser).take(num_tables as usize)
         .any(|t| matches!(t, (0, _, _) | (3, 0, _) | (3, 10, _) | (3, 1, _)));
 
-    for (platform, encoding, offset) in iterator(i, tuple((be_u16, be_u16, be_u32))).take(num_tables as usize) {
+    for (platform, encoding, offset) in iterator(i, _cu_parser).take(num_tables as usize) {
         let encoding = match (platform, encoding) {
             (0, _) | (3, 0) | (3, 10) | (3, 1) => Encoding::Unicode,
             (1, 0) => {
@@ -201,7 +207,14 @@ pub fn parse_cmap(input: &[u8]) -> Result<(CMap, Encoding), FontError> {
                 
                 let (i, _language) = be_u32(data)?;
                 let (i, num_groups) = be_u32(i)?;
-                for (start_code, end_code, start_gid) in iterator(i, tuple((be_u32, be_u32, be_u32))).take(num_groups as usize) {
+                fn _cu_parser<'a>(s: &'a [u8]) -> nom::IResult<&'a [u8], (u32, u32, u32)> {
+                    let (s, sx) = be_u32(s)?;
+                    let (s, sy) = be_u32(s)?;
+                    let (s, sz) = be_u32(s)?;
+                    Ok((s, (sx, sy, sz)))
+                }
+
+                for (start_code, end_code, start_gid) in iterator(i, _cu_parser).take(num_groups as usize) {
                     trace!("start_code={}, end_code={}, start_gid={}", start_code, end_code, start_gid);
                     for (code, gid) in (start_code ..= end_code).zip(start_gid ..) {
                         trace!("codepoint {} -> gid {}", code, gid);
@@ -215,12 +228,23 @@ pub fn parse_cmap(input: &[u8]) -> Result<(CMap, Encoding), FontError> {
                 let (i, length) = be_u32(i)?;
                 let i = slice!(i, .. length as usize - 6);
                 
+                fn _cu_parser<'a>(s: &'a [u8]) -> nom::IResult<&'a [u8], (u32, u32, u32)> {
+                    let (s, sx) = be_u24(s)?;
+                    let (s, sy) = be_u32(s)?;
+                    let (s, sz) = be_u32(s)?;
+                    Ok((s, (sx, sy, sz)))
+                }
+
                 let (i, num_var_selector_records) = be_u32(i)?;
-                for (var_selector, default_uvs_offset, non_default_uvs_offset) in iterator(i, tuple((be_u24, be_u32, be_u32))).take(num_var_selector_records as usize) {
+                for (var_selector, default_uvs_offset, non_default_uvs_offset) in iterator(i, _cu_parser).take(num_var_selector_records as usize) {
                     if default_uvs_offset != 0 {
                         let i = slice!(table, default_uvs_offset as usize ..);
                         let (i, num_unicode_value_ranges) = be_u32(i)?;
-                        for (start_unicode_value, additional_count) in iterator(i, tuple((be_u24, be_u8))).take(num_unicode_value_ranges as usize) {
+                        for (start_unicode_value, additional_count) in iterator(i, |s| {
+                            let (s, sx) = be_u24(s)?;
+                            let (s, sy) = be_u8(s)?;
+                            Ok((s, (sx, sy)))
+                        }).take(num_unicode_value_ranges as usize) {
                             for cp in start_unicode_value ..= start_unicode_value + additional_count as u32 {
                                 cmap3.push((cp, var_selector));
                             }
@@ -229,7 +253,11 @@ pub fn parse_cmap(input: &[u8]) -> Result<(CMap, Encoding), FontError> {
                     if non_default_uvs_offset != 0 {
                         let i = slice!(table, non_default_uvs_offset as usize ..);
                         let (i, num_uvs_mappings) = be_u32(i)?;
-                        for (unicode_value, glyph_id) in iterator(i, tuple((be_u24, be_u16))).take(num_uvs_mappings as usize) {
+                        for (unicode_value, glyph_id) in iterator(i, |s| {
+                            let (s, sx) = be_u24(s)?;
+                            let (s, sy) = be_u16(s)?;
+                            Ok((s, (sx, sy)))
+                        }).take(num_uvs_mappings as usize) {
                             if glyph_id != 0 {
                                 cmap2.insert((unicode_value, var_selector), glyph_id as u32);
                             }

@@ -1,9 +1,5 @@
-use crate::prelude::*;
-
-use pathfinder_content::{
-    fill::{FillRule}
-};
-use svgtypes::{Length};
+use pathfinder_content::fill::FillRule;
+use svgtypes::Length;
 use isolang::Language;
 
 #[derive(Debug, Clone)]

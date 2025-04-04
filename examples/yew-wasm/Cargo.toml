@@ -18,7 +18,7 @@ lazy_static = "1.4"
 yew-hooks = "0.3.2"
 stylist = { version = "0.13", features = ["yew_integration"] }
 url = "2.5.1"
-thiserror = "1.0.62"
+thiserror = "2.0.12"
 js-sys = "0.3.69"
 gloo-utils = "0.2.0"
 

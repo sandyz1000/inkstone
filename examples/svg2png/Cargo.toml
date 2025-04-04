@@ -7,4 +7,4 @@ edition = "2021"
 image = { workspace = true }
 pathfinder_svg = { workspace = true }
 rasterize = { path = "../../rasterize" }
-usvg = "0.9"
+usvg = "*"

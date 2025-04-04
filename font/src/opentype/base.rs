@@ -1,6 +1,5 @@
 use nom::{
     number::complete::{be_i16, be_u16},
-    sequence::{tuple},
 };
 use crate::FontError;
 use crate::parsers::{*};
@@ -46,7 +45,11 @@ fn parse_base_tag_list(data: &[u8]) -> Result<impl Array<Item=Tag> + '_, FontErr
 fn parse_base_script_list<'a>(data: &'a [u8], tags: impl Array<Item=Tag>) -> Result<(), FontError> {
     let mut tags = tags.iter();
     let (i, base_script_count) = be_u16(data)?;
-    for (script_tag, offset) in iterator_n(i, tuple((tag, offset)), base_script_count) {
+    for (script_tag, offset) in iterator_n(i, |s| {
+        let (s, x) = tag(s)?; 
+        let (s, y) = offset(s)?;
+        Ok((s, (x, y)))
+    }, base_script_count) {
         let (default_baseline_idx, baselines) = parse_base_script_table(offset.of(data)?)?;
         for (base_pos, base_tag) in baselines.zip(tags.by_ref()) {
             //println!("{:?} @ {}", base_tag?, base_pos);

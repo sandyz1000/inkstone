@@ -1,11 +1,10 @@
 [package]
 name = "font"
 version = "0.1.0"
-authors = [
-    "Sandip Dey <sandip.dey1988@yahoo.com>",
-    "Sebastian Köln <s3bk@protonmail.org>",
-]
-edition = "2021"
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description.workspace = true
 
 [features]
 unstable = ["slotmap/unstable", "tuple/nightly"]
@@ -25,7 +24,7 @@ pathfinder_geometry = { workspace = true }
 pathfinder_content = { workspace = true }
 pathfinder_color = { workspace = true }
 tuple = { git = "https://github.com/s3bk/tuple/" }
-nom = { workspace = true }
+nom = { workspace = true, features = ["default"] }
 log = { workspace = true }
 rand = { workspace = true }
 slotmap = { version = "1.0" }
@@ -42,5 +41,5 @@ istring = "0.4.0"
 pathfinder_renderer = { workspace = true }
 pathfinder_export = { workspace = true }
 walkdir = "2.3"
-env_logger = { version = "*" }
+env_logger = { workspace = true }
 memmap = "*"

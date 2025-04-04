@@ -1,4 +1,5 @@
 use glyphmatcher::FontDb;
+use std::borrow::Cow;
 use pdf::error::{PdfError, Result};
 use pdf::font::Font as PdfFont;
 use pdf::object::*;

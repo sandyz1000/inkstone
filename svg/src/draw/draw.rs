@@ -1,8 +1,8 @@
 use crate::prelude::*;
 use pathfinder_content::{
-    outline::{Outline},
+    outline::Outline,
     stroke::{OutlineStrokeToFill, StrokeStyle, LineCap, LineJoin},
-    fill::{FillRule},
+    fill::FillRule,
     dash::OutlineDash,
 };
 use pathfinder_renderer::{
@@ -10,7 +10,7 @@ use pathfinder_renderer::{
     paint::Paint as PaPaint,
 };
 use pathfinder_color::ColorU;
-use svgtypes::{Length};
+use svgtypes::Length;
 use std::sync::Arc;
 use crate::gradient::BuildGradient;
 #[cfg(feature="text")]
