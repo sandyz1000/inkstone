@@ -1,4 +1,4 @@
-use svg_dom::{Svg};
+use svg_dom::Svg;
 
 fn main() {
     env_logger::init();

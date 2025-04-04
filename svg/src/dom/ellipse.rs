@@ -1,8 +1,5 @@
 use roxmltree::Node;
 use svgtypes::Length;
-use crate::prelude::*;
-use std::str::FromStr;
-
 
 #[derive(Debug)]
 pub struct TagEllipse {

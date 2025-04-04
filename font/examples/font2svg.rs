@@ -7,8 +7,7 @@ use pathfinder_geometry::{
     transform2d::Transform2F,
     rect::RectF
 };
-use pathfinder_content::outline::{Outline};
-use font::{Font, parse, GlyphId};
+use font::{parse, GlyphId};
 use pathfinder_renderer::{
     scene::{Scene, DrawPath},
     paint::Paint
@@ -70,7 +69,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         * Transform2F::from_scale(Vector2F::new(1.0, -1.0))
         * Transform2F::from_translation(-bbox.origin());
         
-        if let Some(svg) = font.svg_glyph(GlyphId(gid)) {
+        if let Some(svg) = font.glyph(GlyphId(gid)) {
             draw_glyph(svg, &mut scene, transform);
             continue;
         }

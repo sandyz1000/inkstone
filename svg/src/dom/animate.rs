@@ -1,8 +1,9 @@
 use std::ops::{Add, Sub, Mul};
 use std::fmt::Debug;
 use pathfinder_content::outline::Contour;
-use crate::prelude::*;
-use crate::parser::{number_list_4, one_or_two_numbers, one_or_three_numbers};
+use crate::dom::parser::{number_list_4, one_or_two_numbers, one_or_three_numbers};
+use log::debug;
+
 
 #[derive(Debug, Clone)]
 pub struct Animate<T> {

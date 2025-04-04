@@ -1,11 +1,9 @@
 use pathfinder_gl::{GLDevice, GLVersion};
 use pathfinder_renderer::{
-    concurrent::{
-        rayon::RayonExecutor,
-    },
+    concurrent::rayon::RayonExecutor,
     gpu::{
         options::{DestFramebuffer, RendererOptions, RendererMode, RendererLevel},
-        renderer::{Renderer},
+        renderer::Renderer,
     },
     scene::Scene,
     options::{BuildOptions, RenderTransform}
@@ -21,7 +19,7 @@ use pathfinder_resources::embedded::EmbeddedResourceLoader;
 
 use khronos_egl as egl;
 use image::RgbaImage;
-use egl::{Instance};
+use egl::Instance;
 
 pub struct Rasterizer {
     egl: Instance<egl::Static>,

@@ -7,14 +7,14 @@ use crate::{Font, R, IResultExt, VMetrics, HMetrics, Glyph, GlyphId, Name, FontI
 use crate::truetype::{Shape, parse_shapes, get_outline};
 #[cfg(feature="cff")]
 use crate::cff::read_cff;
+use nom::Parser;
 use pdf_encoding::Encoding;
 use crate::parsers::{*};
 use nom::{
     number::complete::{be_u8, be_i16, be_u16, be_i64, be_i32, be_u32},
     multi::{count, many0},
     combinator::map,
-    bytes::complete::take,
-    sequence::tuple,
+    bytes::complete::take
 };
 use pathfinder_content::outline::Outline;
 use pathfinder_geometry::{vector::Vector2F, transform2d::Transform2F, rect::RectF};
@@ -280,8 +280,18 @@ pub fn parse_tables(data: &[u8]) -> Result<Tables<&[u8]>, FontError> {
     
     debug!("{} tables", num_tables);
     let mut entries = HashMap::with_capacity(num_tables as usize);
+
+    fn _cu_pars(s: &[u8]) -> nom::IResult<&[u8], (&[u8], u32, u32, u32)> {
+        let (s, first) = take(4usize)(s)?;
+        let (s, second) = be_u32(s)?; 
+        let (s, third) = be_u32(s)?; 
+        let (s, fourth) = be_u32(s)?;
+
+        Ok((s, (first, second, third, fourth)))
+    }
+
     for _ in 0 .. num_tables {
-        let (tag, _, off, len) = parse(&mut i, tuple((take(4usize), be_u32, be_u32, be_u32)))?;
+        let (tag, _, off, len) = parse(&mut i, _cu_pars)?;
         let (off, len) = (off as usize, len as usize);
         entries.insert(
             tag.try_into().expect("slice too short"),
@@ -356,8 +366,8 @@ pub fn parse_maxp(i: &[u8]) -> Result<Maxp, FontError> {
 }
 pub fn parse_loca<'a>(i: &'a [u8], head: &Head, maxp: &Maxp) -> Result<Vec<u32>, FontError> {
     match head.index_to_loc_format {
-        0 => count(map(be_u16, |n| 2 * n as u32), maxp.num_glyphs as usize + 1)(i).get(),
-        1 => count(be_u32, maxp.num_glyphs as usize + 1)(i).get(),
+        0 => count(map(be_u16, |n| 2 * n as u32), maxp.num_glyphs as usize + 1).parse(i).get(),
+        1 => count(be_u32, maxp.num_glyphs as usize + 1).parse(i).get(),
         _ => error!("invalid index_to_loc_format")
     }
 }
@@ -425,10 +435,14 @@ impl Hmtx {
 pub fn parse_hmtx<'a>(i: &'a [u8], hhea: &Hhea, _maxp: &Maxp) -> R<'a, Hmtx> {
     let num_metrics = hhea.number_of_hmetrics;
     let (i, metrics) = count(
-        tuple((be_u16, be_i16)),
+        |s| {
+            let (s, sx) = be_u16(s)?; 
+            let (s, sy) = be_i16(s)?;
+            Ok((s, (sx, sy)))
+        },
         num_metrics as usize
-    )(i)?;
-    let (i, lsbs) = many0(be_i16)(i)?;
+    ).parse(i)?;
+    let (i, lsbs) = many0(be_i16).parse(i)?;
     let last_advance = metrics.last().map(|&(advance, _)| advance).unwrap_or(0);
     
     Ok((i, Hmtx {
@@ -443,7 +457,7 @@ pub fn parse_hmtx_woff2_format1<'a>(i: &'a [u8], head: &Head, hhea: &Hhea, maxp:
     let (mut i, advance_stream) = take(num_metrics * 2)(i)?;
     
     let metrics: Vec<_> = if flags & 1 == 0 {
-        let lsb_stream = parse(&mut i, take(num_metrics * 2))?;
+        let lsb_stream = parse(&mut i, |s| take(num_metrics * 2).parse(s))?;
         iterator(advance_stream, be_u16).zip(iterator(lsb_stream, be_i16)).collect()
     } else {
         iterator(advance_stream, be_u16)
@@ -452,7 +466,7 @@ pub fn parse_hmtx_woff2_format1<'a>(i: &'a [u8], head: &Head, hhea: &Hhea, maxp:
     };
     
     let lsbs = if flags & 2 == 0 {
-        parse(&mut i, count(be_i16, maxp.num_glyphs as usize - num_metrics))?
+        parse(&mut i, |s| count(be_i16, maxp.num_glyphs as usize - num_metrics).parse(s))?
     } else {
         vec![]
     };
@@ -481,14 +495,20 @@ pub fn parse_vhea(i: &[u8]) -> R<VMetrics> {
 pub fn parse_skript_list(data: &[u8]) -> Result<(), FontError> {
     let (i, script_count) = be_u16(data)?;
     
-    for (tag, offset) in iterator_n(i, tuple((take(4usize), be_u16)), script_count) {
+    fn cu_parser<'a>(i: &'a [u8]) -> nom::IResult<&'a [u8], (&'a [u8], u16)> {
+        let (i, sx) = take(4usize)(i)?;
+        let (i, sy) = be_u16(i)?;
+        Ok((i, (sx, sy)))
+    }
+
+    for (tag, offset) in iterator_n(i, cu_parser, script_count) {
         debug!("script {}", String::from_utf8_lossy(tag));
         let script_data = slice!(data, offset as usize ..);
         
         let (i, _default_lang_sys_off) = be_u16(script_data)?;
         let (i, sys_lang_count) = be_u16(i)?;
         
-        for (_tag, offset) in iterator_n(i, tuple((take(4usize), be_u16)), sys_lang_count) {
+        for (_tag, offset) in iterator_n(i, cu_parser, sys_lang_count) {
             let i = slice!(script_data, offset as usize ..);
             let (i, _lookup_order) = be_u16(i)?;
             let (i, _required_feature_index) = be_u16(i)?;
@@ -519,6 +539,13 @@ pub fn parse_lookup_list(data: &[u8], mut inner: impl FnMut(usize, &[u8], u16, u
 // maps gid -> class id
 pub fn parse_class_def<'a>(data: &'a [u8], map: &mut HashMap<u16, u16>) -> Result<(), FontError> {
     let (i, format) = be_u16(data)?;
+    fn _cu_parser<'a>(s: &'a [u8]) -> nom::IResult<&'a [u8], (u16, u16, u16)> {
+        let (s, sx) = be_u16(s)?;
+        let (s, sy) = be_u16(s)?;
+        let (s, sz) = be_u16(s)?;
+        Ok((s, (sx, sy, sz)))
+    }
+
     match format {
         1 => {
             let (i, start_glyph_id) = be_u16(i)?;
@@ -531,7 +558,7 @@ pub fn parse_class_def<'a>(data: &'a [u8], map: &mut HashMap<u16, u16>) -> Resul
         2 => {
             let (i, class_rage_count) = be_u16(i)?;
             map.reserve(class_rage_count as usize);
-            for (start_gid, end_gid, class) in iterator_n(i, tuple((be_u16, be_u16, be_u16)), class_rage_count) {
+            for (start_gid, end_gid, class) in iterator_n(i, _cu_parser, class_rage_count) {
                 for gid in start_gid ..= end_gid {
                     map.insert(gid, class);
                 }
@@ -543,6 +570,13 @@ pub fn parse_class_def<'a>(data: &'a [u8], map: &mut HashMap<u16, u16>) -> Resul
 }
 
 pub fn coverage_table<'a>(i: &'a [u8]) -> Result<impl Iterator<Item=u16> + 'a, FontError> {
+    fn _cu_parser<'a>(s: &'a [u8]) -> nom::IResult<&'a [u8], (u16, u16, u16)> {
+        let (s, sx) = be_u16(s)?;
+        let (s, sy) = be_u16(s)?;
+        let (s, sz) = be_u16(s)?;
+        Ok((s, (sx, sy, sz)))
+    }
+
     let (i, format) = be_u16(i)?;
     debug!("coverage table format {}", format);
     match format {
@@ -553,7 +587,7 @@ pub fn coverage_table<'a>(i: &'a [u8]) -> Result<impl Iterator<Item=u16> + 'a, F
         2 => {
             let (i, range_count) = be_u16(i)?;
             Ok(Either::Right(
-                iterator_n(i, tuple((be_u16, be_u16, be_u16)), range_count)
+                iterator_n(i, _cu_parser, range_count)
                     .flat_map(|(start, end, _i)| start ..= end)
             ))
         },
@@ -564,13 +598,23 @@ pub fn coverage_table<'a>(i: &'a [u8]) -> Result<impl Iterator<Item=u16> + 'a, F
 pub fn parse_name(data: &[u8]) -> Result<Name, FontError> {
     let mut name = Name::default();
 
+    fn _cu_parser<'a>(s: &'a [u8]) -> nom::IResult<&'a [u8], (u16, u16, u16, u16, u16, u16)> {
+        let (s, su) = be_u16(s)?;
+        let (s, sv) = be_u16(s)?;
+        let (s, sw) = be_u16(s)?;
+        let (s, sx) = be_u16(s)?;
+        let (s, sy) = be_u16(s)?;
+        let (s, sz) = be_u16(s)?;
+        Ok((s, (su, sv, sw, sx, sy, sz)))
+    }
+
     let (i, format) = be_u16(data)?;
     match format {
         0 | 1 => {
             let (i, count) = be_u16(i)?;
             let (i, string_offset) = be_u16(i)?;
             let string_data = slice!(data, string_offset as usize ..);
-            for name_record in iterator_n(i, tuple((be_u16, be_u16, be_u16, be_u16, be_u16, be_u16)), count) {
+            for name_record in iterator_n(i, _cu_parser, count) {
                 let (platform_id, encoding_id, language_id, name_id, length, offset) = name_record;
                 //debug!("platform_id={}, encoding_id={}, language_id={}, name_id={}", platform_id, encoding_id, language_id, name_id);
 

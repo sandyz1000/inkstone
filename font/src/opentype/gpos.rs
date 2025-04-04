@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use nom::{
     bytes::complete::{take},
     number::complete::{be_i16, be_u16, be_u32},
-    sequence::{tuple},
 };
 use crate::{R, GlyphId, FontError};
 use crate::parsers::{*};
@@ -124,7 +123,12 @@ fn parse_pair_adjustment<'a>(data: &'a [u8], kern: &mut KernTable, _num_glyphs: 
                 let i = slice!(data, offset as usize ..);
                 let (i, pair_value_count) = be_u16(i)?;
                 
-                let iter = iterator_n(i, tuple((be_u16, value_record(value_format_1), value_record(value_format_2))), pair_value_count);
+                let iter = iterator_n(i, |s: &[u8]| {
+                    let (s, sx) = be_u16(s)?;
+                    let (s, sy) = value_record(value_format_1)(s)?;
+                    let (s, sz) = value_record(value_format_2)(s)?;
+                    Ok((s, (sx, sy, sz)))
+                }, pair_value_count);
                 for (second_glyph, value_record_1, _value_record_2) in iter {
                     //debug!("{:?}/{}: {:?} {:?}", first_glyph, second_glyph, value_record_1, value_record_2);
                     kern.glyph_pairs.insert((first_glyph, second_glyph), value_record_1.x_advance);
@@ -141,7 +145,11 @@ fn parse_pair_adjustment<'a>(data: &'a [u8], kern: &mut KernTable, _num_glyphs: 
             let (i, class_2_count) = be_u16(i)?;
             
             let iter = (0 .. class_1_count).cartesian_product(0 .. class_2_count)
-                .zip(iterator_n(i, tuple((value_record(value_format_1), value_record(value_format_2))), class_1_count * class_2_count));
+                .zip(iterator_n(i, |s| {
+                    let (s, sx) = value_record(value_format_1)(s)?;
+                    let (s, sy) = value_record(value_format_2)(s)?;
+                    Ok((s, (sx, sy)))
+                }, class_1_count * class_2_count));
             
             kern.class_pairs.reserve(class_1_count as usize * class_2_count as usize);
 

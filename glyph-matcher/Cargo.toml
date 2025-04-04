@@ -13,5 +13,5 @@ pathfinder_geometry = { workspace=true }
 itertools = "*"
 serde = { version = "*", features = ["derive"] }
 postcard = { version = "1.0", features = ["alloc"] }
-istring = { git = "https://github.com/s3bk/istring", features = ["serialize"] }
+istring = { workspace = true, features = ["serialize"] }
 serde_json = "*"

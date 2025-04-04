@@ -1,5 +1,5 @@
 #![allow(non_snake_case)]
-
+use nom::Parser;
 use crate::parsers::count as count2;
 use crate::{
     type1, type2, Context, Font, FontError, Glyph, GlyphId, HMetrics, IResultExt, Info, Name,
@@ -11,7 +11,7 @@ use nom::{
     error::{make_error, ErrorKind},
     multi::{count, many0},
     number::complete::{be_i16, be_i32, be_u16, be_u24, be_u32, be_u8},
-    sequence::tuple,
+    // sequence::tuple,
     Err::*,
 };
 use pathfinder_content::outline::Outline;
@@ -274,11 +274,11 @@ impl<'a> Cff<'a> {
 fn fd_select(data: &[u8], num_glyphs: usize) -> Result<Vec<usize>, FontError> {
     let (data, fmt) = be_u8(data)?;
     match fmt {
-        0 => count(map(be_u8, |i| i as usize), num_glyphs)(data).get(),
+        0 => count(map(be_u8, |i| i as usize), num_glyphs).parse(data).get(),
         3 => {
-            let (data, nranges) = map(be_u16, |i| i as usize)(data)?;
-            let (data, range3) = count(range3_record, nranges)(data)?;
-            let (data, sentinel) = map(be_u16, |i| i as usize)(data)?;
+            let (data, nranges) = map(be_u16, |i| i as usize).parse(data)?;
+            let (data, range3) = count(range3_record, nranges).parse(data)?;
+            let (data, sentinel) = map(be_u16, |i| i as usize).parse(data)?;
             let mut indexes = vec![0; sentinel];
             let mut stop = sentinel;
             if get!(range3, 0).0 != 0 {
@@ -295,8 +295,8 @@ fn fd_select(data: &[u8], num_glyphs: usize) -> Result<Vec<usize>, FontError> {
 }
 
 fn range3_record(data: &[u8]) -> R<(usize, usize)> {
-    let (data, first) = map(be_u16, |f| f as usize)(data)?;
-    let (data, fd) = map(be_u8, |f| f as usize)(data)?;
+    let (data, first) = map(be_u16, |f| f as usize).parse(data)?;
+    let (data, fd) = map(be_u8, |f| f as usize).parse(data)?;
     Ok((data, (first, fd)))
 }
 
@@ -578,7 +578,7 @@ enum CharstringType {
 }
 
 fn index(i: &[u8]) -> ParseResult<Vec<&[u8]>> {
-    let (i, n) = map(be_u16, |n| n as usize)(i)?;
+    let (i, n) = map(be_u16, |n| n as usize).parse(i)?;
     debug!("n={}", n);
     if n != 0 {
         let (i, offSize) = t!(be_u8(i));
@@ -601,8 +601,8 @@ fn index(i: &[u8]) -> ParseResult<Vec<&[u8]>> {
 fn offset(size: u8) -> impl Fn(&[u8]) -> ParseResult<u32> {
     move |i| {
         Ok(match size {
-            1 => map(be_u8, |n| n as u32)(i)?,
-            2 => map(be_u16, |n| n as u32)(i)?,
+            1 => map(be_u8, |n| n as u32).parse(i)?,
+            2 => map(be_u16, |n| n as u32).parse(i)?,
             3 => be_u24(i)?,
             4 => be_u32(i)?,
             n => key!(n),
@@ -674,17 +674,17 @@ fn value(input: &[u8]) -> ParseResult<Value> {
 
     Ok(match b0 {
         22..=27 => reserved!(b0),
-        28 => map(be_i16, |n| n.into())(i)?,
-        29 => map(be_i32, |n| n.into())(i)?,
+        28 => map(be_i16, |n| n.into()).parse(i)?,
+        29 => map(be_i32, |n| n.into()).parse(i)?,
         30 => float(i).map(|(i, f)| (i, f.into()))?,
         31 => reserved!(b0),
         b0 @ 32..=246 => (i, (b0 as i32 - 139).into()),
         b0 @ 247..=250 => map(be_u8, |b1| {
             ((b0 as i32 - 247) * 256 + b1 as i32 + 108).into()
-        })(i)?,
+        }).parse(i)?,
         b0 @ 251..=254 => map(be_u8, |b1| {
             (-(b0 as i32 - 251) * 256 - b1 as i32 - 108).into()
-        })(i)?,
+        }).parse(i)?,
         255 => reserved!(b0),
         b0 => reserved!(b0),
     })
@@ -866,11 +866,11 @@ fn charset(i: &[u8], num_glyphs: usize) -> R<Charset> {
     match format {
         0 => map(count(be_u16, num_glyphs as usize - 1), |a| {
             Charset::Continous(a)
-        })(i),
-        1 => map(ranges(map(be_u8, |n| n as u16), num_glyphs), |r| {
+        }).parse(i),
+        1 => map(ranges(|input| map(be_u8, |n| n as u16).parse(input), num_glyphs), |r| {
             Charset::Ranges(r)
-        })(i),
-        2 => map(ranges(be_u16, num_glyphs), |r| Charset::Ranges(r))(i),
+        }).parse(i),
+        2 => map(ranges(be_u16, num_glyphs), |r| Charset::Ranges(r)).parse(i),
         _ => panic!("invalid charset format"),
     }
 }
@@ -887,19 +887,19 @@ fn parse_encoding(i: &[u8]) -> R<(GlyphEncoding, Vec<(u8, SID)>)> {
     let (i, encoding) = match format & 0x7F {
         0 => {
             let (i, num) = be_u8(i)?;
-            map(count(be_u8, num as usize), |a| GlyphEncoding::Continous(a))(i)?
+            map(count(be_u8, num as usize), |a| GlyphEncoding::Continous(a)).parse(i)?
         }
         1 => {
             let (i, num) = be_u8(i)?;
-            map(count(tuple((be_u8, be_u8)), num as usize), |a| {
+            map(count((be_u8, be_u8), num as usize), |a| {
                 GlyphEncoding::Ranges(a)
-            })(i)?
+            }).parse(i)?
         }
         _ => panic!("invalid charset format"),
     };
     if format & 0x80 != 0 {
         let (i, n) = be_u8(i)?;
-        let (i, supplement) = count(tuple((be_u8, be_u16)), n as usize)(i)?;
+        let (i, supplement) = count((be_u8, be_u16), n as usize).parse(i)?;
         Ok((i, (encoding, supplement)))
     } else {
         Ok((i, (encoding, vec![])))

@@ -3,7 +3,7 @@ name = "pdf_render"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
-description.workspace = true
+description = "Renderer for PDF files"
 
 [features]
 unstable = []

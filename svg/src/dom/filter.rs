@@ -1,4 +1,3 @@
-use crate::prelude::*;
 use pathfinder_simd::default::F32x4;
 use svgtypes::NumberListParser;
 

@@ -1,5 +1,4 @@
-use crate::prelude::*;
-use crate::{parse_node_list, TagSvg};
+use crate::dom::parse_node_list;
 use std::sync::Arc;
 
 #[derive(Debug)]

@@ -1,21 +1,10 @@
 [package]
 name = "pdf_svg"
 version = "0.1.0"
-edition = "2021"
-
-members = [
-    "dom",
-    "draw",
-    "text",
-    "web",
-]
-
-default-members = [
-    "dom",
-    "draw",
-    "text",
-    "web"
-]
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "SVG support for PDF rendering"
 
 [dependencies]
 roxmltree = { workspace = true }
@@ -41,7 +30,7 @@ pathfinder_content = { workspace = true }
 pathfinder_renderer = { workspace = true }
 pathfinder_color = { workspace = true }
 pathfinder_simd = { workspace = true }
-
+font = { path = "../font", features=["opentype"] }
 
 [dev-dependencies]
 pathfinder_resources = { workspace = true }

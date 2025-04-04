@@ -240,10 +240,10 @@ pub fn charstring<'a, 'b, T, U>(mut input: &'a [u8], ctx: &'a Context<T, U>, s: 
                     22 => error!("unimplemented: ifelse"),
                     23 => { // random (12 23) num2
                         trace!("random");
-                        use rand::{thread_rng, Rng};
-                        use rand::distributions::OpenClosed01;
+                        use rand::{rng, Rng};
+                        use rand::distr::OpenClosed01;
                         
-                        let val: f32 = thread_rng().sample(OpenClosed01);
+                        let val: f32 = rng().sample(OpenClosed01);
                         s.push(val);
                         i
                     }

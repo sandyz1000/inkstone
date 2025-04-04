@@ -6,7 +6,7 @@
 use std::fmt;
 use std::convert::TryInto;
 use std::any::TypeId;
-use nom::{IResult, Err::*, error::VerboseError};
+use nom::{IResult, Err::*, error::Error as NomError};
 use tuple::{TupleElements};
 use pdf_encoding::Encoding;
 
@@ -200,7 +200,7 @@ pub use opentype::OpenTypeFont;
 #[cfg(feature="woff")]
 pub use woff::{parse_woff, parse_woff2};
 
-pub type R<'a, T> = IResult<&'a [u8], T, VerboseError<&'a [u8]>>;
+pub type R<'a, T> = IResult<&'a [u8], T, NomError<&'a [u8]>>;
 pub type ParseResult<'a, T> = Result<(&'a [u8], T), FontError>;
 
 #[derive(Copy, Clone)]
@@ -439,20 +439,21 @@ pub trait IResultExt {
     fn get(self) -> Result<Self::Item, FontError>;
 }
 
-fn print_err(e: nom::Err<VerboseError<&[u8]>>) -> ! {
+fn print_err(e: nom::Err<NomError<&[u8]>>) -> ! {
     match e {
         Incomplete(_) => panic!("need more data"),
         Error(v) | Failure(v) => {
-            for (i, e) in v.errors {
-                println!("{:?} {:?}", &i[.. i.len().min(20)], e);
-                println!("{:?}", String::from_utf8_lossy(&i[.. i.len().min(20)]));
-            }
+            // TODO: FixMe
+            // for (i, e) in v.errors {
+            //     println!("{:?} {:?}", &i[.. i.len().min(20)], e);
+            //     println!("{:?}", String::from_utf8_lossy(&i[.. i.len().min(20)]));
+            // }
             panic!()
         }
     }
 }
 
-impl<T> IResultExt for IResult<&[u8], T, VerboseError<&[u8]>> {
+impl<T> IResultExt for IResult<&[u8], T, NomError<&[u8]>> {
     type Item = T;
     #[inline]
     fn get(self) -> Result<T, FontError> {

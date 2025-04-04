@@ -8,7 +8,6 @@ use pdf_encoding::Encoding;
 use nom::{
     number::complete::{be_u8, be_i8, be_i16, be_u16},
     bytes::complete::take,
-    sequence::tuple
 };
 use pathfinder_content::outline::{Outline, Contour};
 use pathfinder_geometry::{vector::Vector2F, transform2d::Transform2F, rect::RectF};
@@ -206,7 +205,11 @@ pub fn compound(mut input: &[u8]) -> R<Shape> {
     // Compound shapes
     let mut parts = Vec::new();
     loop {
-        let (flags, gidx) = parse(&mut input, tuple((be_u16, be_u16)))?;
+        let (flags, gidx) = parse(&mut input, |i| {
+            let (i, x) = be_u16(i)?;
+            let (i, y) = be_u16(i)?;
+            Ok((i, (x, y)))
+        })?;
         let mut transform = Transform2F::default();
         if flags & 2 != 0 {
             // XY values
@@ -225,12 +228,23 @@ pub fn compound(mut input: &[u8]) -> R<Shape> {
             transform.matrix = Matrix2x2F::from_scale(Vector2F::splat(scale));
         } else if flags & (1 << 6) != 0 {
             // WE_HAVE_AN_X_AND_YSCALE
-            let (sx, sy) = parse(&mut input, tuple((fraction_i16, fraction_i16)))?;
+            // let (sx, sy) = parse(&mut input, nom::sequence::tuple((fraction_i16, fraction_i16)))?;
+            let (sx, sy) = parse(&mut input, |i| {
+                let (i, sx) = fraction_i16(i)?;
+                let (i, sy) = fraction_i16(i)?;
+                Ok((i, (sx, sy)))
+            })?;
             let s = Vector2F::new(sx, sy);
             transform.matrix = Matrix2x2F::from_scale(s);
         } else if flags & (1 << 7) != 0 {
             // WE_HAVE_A_TWO_BY_TWO
-            let (a, b, c, d) = parse(&mut input, tuple((fraction_i16, fraction_i16, fraction_i16, fraction_i16)))?;
+            let (a, b, c, d) = parse(&mut input, |i| {
+                let (i, sw) = fraction_i16(i)?;
+                let (i, sx) = fraction_i16(i)?;
+                let (i, sy) = fraction_i16(i)?;
+                let (i, sz) = fraction_i16(i)?;
+                Ok((i, (sw, sx, sy, sz)))
+            })?;
             transform.matrix = Matrix2x2F::row_major(a, b, c, d);
         }
 
