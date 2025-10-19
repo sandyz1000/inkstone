@@ -8,8 +8,8 @@ edition.workspace = true
 
 [dependencies]
 pdf = { workspace = true }
-pdf_render = { path = "../../render" }
+inkrender = { path = "../crates/render" }
 argh = "0.1.12"
-rasterize = { path = "../rasterize" }
+rasterize = { path = "../crates/rasterize" }
 pathfinder_geometry = { workspace = true }
 env_logger = { workspace = true }

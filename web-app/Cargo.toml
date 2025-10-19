@@ -15,8 +15,8 @@ dioxus-web = "0.6"
 dioxus-logger = "0.6.2"
 
 # PDF and Rendering
-pdf_view = { path = "../view" }
-pdf_render = { path = "../render" }
+viewer = { path = "../crates/viewer" }
+inkrender = { path = "../crates/render" }
 pdf = { workspace = true, default-features = false, features = ["dump"] }
 pathfinder_renderer = { workspace = true }
 pathfinder_geometry = { workspace = true }
@@ -36,6 +36,7 @@ web-sys = { version = "0.3", features = [
     "Element",
     "HtmlElement",
     "HtmlCanvasElement",
+    "CssStyleDeclaration",
     "WebGl2RenderingContext",
     "WebGlRenderingContext",
     "CanvasRenderingContext2d",
@@ -53,7 +54,7 @@ web-sys = { version = "0.3", features = [
 log = { workspace = true }
 console_log = "1.0"
 console_error_panic_hook = "0.1"
-getrandom = { version = "0.2", features = ["js"] }
+getrandom = { version = "0.3.4", features = ["wasm_js"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 futures = "0.3"

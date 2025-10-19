@@ -7,10 +7,9 @@ license.workspace = true
 description.workspace = true
 
 [dependencies]
-istring = { path = "../istring", features = ["serialize"] }
-pdf_render = { path = "../render" }
-font = { path = "../font", features=["cff", "opentype"] }
-pdf_encoding = { path = "../encoding" }
-rasterize = { path = "../rasterize" }
-pdf_view = { path = "../view" }
-pdf_svg = { path = "../svg" }
+istring = { path = "../crates/istring", features = ["serialize"] }
+inkrender = { path = "../crates/render" }
+inkfont = { path = "../crates/font", features=["cff", "opentype"] }
+inkencoding = { path = "../crates/encoding" }
+rasterize = { path = "../crates/rasterize" }
+viewer = { path = "../crates/viewer" }

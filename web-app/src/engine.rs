@@ -20,7 +20,7 @@ use pathfinder_geometry::{
 };
 use pathfinder_color::ColorF;
 use pathfinder_resources::embedded::EmbeddedResourceLoader;
-use pdf_render::{ Cache as RenderCache, SceneBackend, page_bounds, render_page };
+use inkrender::{ Cache as RenderCache, SceneBackend, page_bounds, render_page };
 use pdf::file::{ File as PdfFile, FileOptions, NoLog };
 use pdf::any::AnySync;
 use pdf::PdfError;

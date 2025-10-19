@@ -3,10 +3,18 @@ target = "index.html"
 dist = "dist"
 public_url = "/"
 
+[build.rust]
+target = "wasm32-unknown-unknown"
+
 [watch]
 ignore = ["dist"]
 
 [serve]
 addresses = ["127.0.0.1"]
 port = 8080
-open = true
+open = false
+
+
+[clean]
+# Remove deprecated dist field, use global dist setting
+cargo = true
