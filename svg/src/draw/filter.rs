@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::draw::prelude::*;
 use pathfinder_renderer::{
     scene::{RenderTarget, DrawPath},
     paint::Paint,

@@ -43,7 +43,7 @@ impl Font for Type1Font {
     fn is_empty_glyph(&self, gid: GlyphId) -> bool {
         self.glyphs
             .get_index(gid.0 as usize)
-            .map(|(_, glyph)| glyph.path.len() == 0)
+            .map(|(_, glyph)| glyph.path.contours().len() == 0)
             .unwrap_or(true)
     }
     fn gid_for_codepoint(&self, codepoint: u32) -> Option<GlyphId> {

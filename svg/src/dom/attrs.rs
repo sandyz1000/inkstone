@@ -1,3 +1,4 @@
+use crate::dom::prelude::*;
 use pathfinder_content::fill::FillRule;
 use svgtypes::Length;
 use isolang::Language;
@@ -34,7 +35,7 @@ impl Parse for Fill {
 fn parse_paint(s: &str) -> Result<Option<Paint>, Error> {
     match s {
         "inherit" | "currentColor" | "currentcolor" => Ok(None),
-        _ => Paint::parse(s).map(Some)
+        _ => Paint::parse(s).map(Some),
     }
 }
 
@@ -122,7 +123,9 @@ impl Parse for FillRule {
         Ok(match s {
             "nonzero" => FillRule::Winding,
             "evenodd" => FillRule::EvenOdd,
-            val => return Err(Error::InvalidAttributeValue(val.into()))
+            val => {
+                return Err(Error::InvalidAttributeValue(val.into()));
+            }
         })
     }
 }
@@ -131,28 +134,28 @@ fn parse_display(s: &str) -> Result<bool, Error> {
     match s {
         "none" => Ok(false),
         "inline" => Ok(true),
-        val => Err(Error::InvalidAttributeValue(val.into()))
+        val => Err(Error::InvalidAttributeValue(val.into())),
     }
 }
 
 #[derive(Debug, Clone)]
 pub enum ClipPathAttr {
     None,
-    Ref(String)
+    Ref(String),
 }
 impl ClipPathAttr {
     pub fn parse(s: &str) -> Result<Option<ClipPathAttr>, Error> {
         match s {
             "none" => Ok(Some(ClipPathAttr::None)),
             "inherit" => Ok(None),
-            _ => Ok(Some(ClipPathAttr::Ref(iri(s)?)))
+            _ => Ok(Some(ClipPathAttr::Ref(iri(s)?))),
         }
     }
 }
 
 fn iri(s: &str) -> Result<String, Error> {
     if s.starts_with("url(#") && s.ends_with(")") {
-        Ok(s[5 .. s.len() - 1].to_owned())
+        Ok(s[5..s.len() - 1].to_owned())
     } else {
         Err(Error::InvalidAttributeValue(s.into()))
     }
@@ -161,7 +164,7 @@ fn iri(s: &str) -> Result<String, Error> {
 #[derive(Debug, Copy, Clone)]
 pub enum TextFlow {
     LeftToRight,
-    RightToLeft
+    RightToLeft,
 }
 
 impl Parse for TextFlow {
@@ -169,7 +172,9 @@ impl Parse for TextFlow {
         Ok(match s {
             "ltr" => TextFlow::LeftToRight,
             "rtl" => TextFlow::RightToLeft,
-            val => return Err(Error::InvalidAttributeValue(val.into()))
+            val => {
+                return Err(Error::InvalidAttributeValue(val.into()));
+            }
         })
     }
 }

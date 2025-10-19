@@ -1,3 +1,4 @@
+use crate::dom::prelude::*;
 use crate::dom::parse_node_list;
 use std::sync::Arc;
 
@@ -46,7 +47,7 @@ impl ParseNode for TagSymbol {
         let id = node.attribute("id").map(|s| s.into());
         let view_box = node.attribute("viewBox").map(Rect::parse).transpose()?;
 
-        Ok(TagSymbol { items, attrs, id,view_box })
+        Ok(TagSymbol { items, attrs, id, view_box })
     }
 }
 
@@ -69,12 +70,17 @@ impl ParseNode for TagUse {
             var height: Option<LengthY>,
             var id,
         });
-        
+
         let href = href(node);
         let attrs = Attrs::parse(node)?;
 
         Ok(TagUse {
-            pos: ValueVector::new(x, y), width, height, attrs, href, id,
+            pos: ValueVector::new(x, y),
+            width,
+            height,
+            attrs,
+            href,
+            id,
         })
     }
 }

@@ -1,8 +1,4 @@
 use crate::prelude::*;
-use crate::animate::*;
-
-use pathfinder_content::fill::FillRule;
-use svgtypes::{Length, Color};
 
 wrap_option_iterpolate!(Fill);
 

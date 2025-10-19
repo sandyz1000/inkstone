@@ -1,6 +1,6 @@
-use crate::prelude::*;
+use crate::dom::prelude::*;
 use std::sync::Arc;
-use crate::parse_node;
+use crate::dom::parse_node;
 
 #[derive(Clone, Debug)]
 pub struct TagText {

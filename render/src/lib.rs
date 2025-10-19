@@ -108,7 +108,7 @@ pub fn render_page(backend: &mut impl Backend, resolve: &impl Resolve, page: &Pa
 }
 pub fn render_pattern(backend: &mut impl Backend, pattern: &Pattern, resolve: &impl Resolve) -> Result<(), PdfError> {
     match pattern {
-        Pattern::Stream(ref dict, ref ops) => {
+        Pattern::Stream(dict, ops) => {
             let resources = resolve.get(dict.resources)?;
             let mut renderstate = RenderState::new(backend, resolve, &*resources, Transform2F::default());
             for (i, op) in ops.iter().enumerate() {

@@ -1,15 +1,12 @@
 // This is taken from >>>
 // https://github.com/s3bk/pathfinder_view/blob/master/src/lib.rs
 
-
 use pathfinder_color::ColorF;
 use pathfinder_geometry::rect::RectF;
-
 
 use pathfinder_renderer::gpu::options::RendererLevel;
 use pathfinder_renderer::scene::Scene;
 use pathfinder_resources::ResourceLoader;
-
 
 pub struct Config {
     pub zoom: bool,
@@ -36,7 +33,6 @@ impl Config {
         }
     }
 }
-
 
 pub struct Icon {
     pub data: Vec<u8>,

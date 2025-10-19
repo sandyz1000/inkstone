@@ -1,6 +1,3 @@
-use std::ops::{Add, Sub, Mul};
-use std::fmt::Debug;
-use pathfinder_content::outline::Contour;
 use crate::prelude::*;
 use std::rc::Rc;
 

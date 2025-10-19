@@ -1,15 +1,15 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{ HashMap, HashSet },
     fmt::Display,
-    path::{Path, PathBuf},
-    sync::{Arc, RwLock},
+    path::{ Path, PathBuf },
+    sync::{ Arc, RwLock },
 };
 
-use font::{opentype::cmap::CMap, CffFont, Font, GlyphId, OpenTypeFont, TrueTypeFont};
+use font::{ opentype::cmap::CMap, CffFont, Font, GlyphId, OpenTypeFont, TrueTypeFont };
 use istring::SmallString;
-use pathfinder_content::outline::{Contour, Outline};
+use pathfinder_content::outline::{ Contour, ContourIterFlags, Outline };
 use pdf_encoding::glyphname_to_unicode;
-use serde::{Deserialize, Serialize};
+use serde::{ Deserialize, Serialize };
 
 pub mod frechet;
 
@@ -44,7 +44,10 @@ fn add_font(db_dir: &Path, font_file: &Path) {
             font_file.file_stem().unwrap().to_str().unwrap()
         }
     };
-    let use_name = font_file.extension().map(|s| s == "name").unwrap_or(false);
+    let use_name = font_file
+        .extension()
+        .map(|s| s == "name")
+        .unwrap_or(false);
 
     let mut db = ShapeDb::new();
 
@@ -53,10 +56,12 @@ fn add_font(db_dir: &Path, font_file: &Path) {
         .with_extension("json");
     let list = if label_file.exists() {
         println!("loading patch");
-        let list: UnicodeList =
-            serde_json::from_slice(&std::fs::read(&label_file).unwrap()).unwrap();
+        let list: UnicodeList = serde_json
+            ::from_slice(&std::fs::read(&label_file).unwrap())
+            .unwrap();
         Some(
-            list.into_iter()
+            list
+                .into_iter()
                 .map(|e| {
                     (
                         GlyphId(e.gid),
@@ -66,7 +71,7 @@ fn add_font(db_dir: &Path, font_file: &Path) {
                             .collect(),
                     )
                 })
-                .collect(),
+                .collect()
         )
     } else {
         font_uni_list(&*font, use_name)
@@ -84,7 +89,10 @@ fn add_font(db_dir: &Path, font_file: &Path) {
 }
 
 pub fn init(db_dir: &Path) {
-    for e in std::fs::read_dir("fonts").unwrap().filter_map(|r| r.ok()) {
+    for e in std::fs
+        ::read_dir("fonts")
+        .unwrap()
+        .filter_map(|r| r.ok()) {
         let path = e.path();
         println!("{path:?}");
         add_font(db_dir, &path);
@@ -93,7 +101,7 @@ pub fn init(db_dir: &Path) {
 
 pub fn font_uni_list(
     font: &(dyn Font + Sync + Send),
-    use_name: bool,
+    use_name: bool
 ) -> Option<Vec<(GlyphId, SmallString)>> {
     if let Some(ttf) = font.downcast_ref::<TrueTypeFont>() {
         println!("TTF");
@@ -133,10 +141,11 @@ fn use_name_map(map: &HashMap<String, u16>) -> Vec<(GlyphId, SmallString)> {
     for (name, &id) in map.iter() {
         if let Some(s) = glyphname_to_unicode(&name) {
             v.push((GlyphId(id as u32), s.into()));
-        } else if let Some(uni) = name
-            .strip_prefix("uni")
-            .and_then(|hex| u32::from_str_radix(hex, 16).ok())
-            .and_then(std::char::from_u32)
+        } else if
+            let Some(uni) = name
+                .strip_prefix("uni")
+                .and_then(|hex| u32::from_str_radix(hex, 16).ok())
+                .and_then(std::char::from_u32)
         {
             v.push((GlyphId(id as u32), uni.into()));
         } else {
@@ -151,10 +160,16 @@ impl<I: Display + PartialEq> ShapeDb<I> {
         let val_idx = self.entries.len();
         let mut points_seen = HashSet::new();
         for c in outline.contours().iter() {
-            for &p in c.points().iter() {
-                let key = (p.x() as u16, p.y() as u16);
-                if points_seen.insert(key) {
-                    self.points.entry(key).or_default().push(val_idx);
+            for segment in c.iter(ContourIterFlags::empty()) {
+                // Extract points from segment baseline
+                let from_p = segment.baseline.from();
+                let to_p = segment.baseline.to();
+
+                for p in [from_p, to_p] {
+                    let key = (p.x() as u16, p.y() as u16);
+                    if points_seen.insert(key) {
+                        self.points.entry(key).or_default().push(val_idx);
+                    }
                 }
             }
         }
@@ -167,7 +182,7 @@ impl<I: Display + PartialEq> ShapeDb<I> {
     pub fn get(
         &self,
         outline: &pathfinder_content::outline::Outline,
-        mut report: Option<&mut String>,
+        mut report: Option<&mut String>
     ) -> Option<&I> {
         use std::fmt::Write;
 
@@ -175,13 +190,18 @@ impl<I: Display + PartialEq> ShapeDb<I> {
         let mut points_seen = HashSet::new();
 
         for c in outline.contours().iter() {
-            for &p in c.points().iter() {
-                let key = (p.x() as u16, p.y() as u16);
+            for segment in c.iter(ContourIterFlags::empty()) {
+                let from_p = segment.baseline.from();
+                let to_p = segment.baseline.to();
 
-                if points_seen.insert(key) {
-                    if let Some(list) = self.points.get(&key) {
-                        for &idx in list {
-                            *candiates.entry(idx).or_default() += 1;
+                for p in [from_p, to_p] {
+                    let key = (p.x() as u16, p.y() as u16);
+
+                    if points_seen.insert(key) {
+                        if let Some(list) = self.points.get(&key) {
+                            for &idx in list {
+                                *candiates.entry(idx).or_default() += 1;
+                            }
                         }
                     }
                 }
@@ -194,7 +214,7 @@ impl<I: Display + PartialEq> ShapeDb<I> {
             let e = &self.entries[idx];
             if let Some(report) = report.as_deref_mut() {
                 let _ = writeln!(report, "<div>candiate <span>{}</span>", e.data);
-            };
+            }
             if e.contour_sets.len() != outline.contours().len() {
                 if let Some(report) = report.as_deref_mut() {
                     let _ = writeln!(
@@ -283,9 +303,9 @@ impl<I: Display + PartialEq> ShapeDb<I> {
 
 fn points_set(contour: &Contour) -> HashSet<(u16, u16)> {
     contour
-        .points()
-        .iter()
-        .map(|&p| (p.x() as u16, p.y() as u16))
+        .iter(ContourIterFlags::empty())
+        .flat_map(|segment| vec![segment.baseline.from(), segment.baseline.to()])
+        .map(|p| (p.x() as u16, p.y() as u16))
         .collect()
 }
 
@@ -293,7 +313,7 @@ pub fn check_font(
     db: &ShapeDb<SmallString>,
     _ps_name: &str,
     font: &(dyn Font + Sync + Send),
-    mut report: Option<&mut String>,
+    mut report: Option<&mut String>
 ) -> Option<HashMap<GlyphId, SmallString>> {
     use std::fmt::Write;
 
@@ -319,7 +339,7 @@ p > span {
 </style>
 </head>
 <body>
-"#,
+"#
         );
     }
 
@@ -327,8 +347,8 @@ p > span {
 
     for i in 0..font.num_glyphs() {
         if let Some(g) = font.glyph(GlyphId(i)) {
-            if g.path.len() > 0 {
-                if g.path.len() > 0 {
+            if !g.path.contours().is_empty() {
+                if !g.path.contours().is_empty() {
                     if let Some(report) = report.as_deref_mut() {
                         writeln!(report, r#"<div class="test">Glyph {i}"#).unwrap();
                         write_glyph(report, &g.path);
@@ -355,7 +375,16 @@ fn write_glyph(w: &mut String, path: &pathfinder_content::outline::Outline) {
     use std::fmt::Write;
 
     let b = path.bounds();
-    writeln!(w, r#"<svg viewBox="{} {} {} {}" transform="scale(1, -1)" style="display: inline-block;" width="{}px"><path d="{:?}" /></svg>"#, b.min_x(), b.min_y(), b.width(), b.height(), b.width() * 0.05, path, ).unwrap();
+    writeln!(
+        w,
+        r#"<svg viewBox="{} {} {} {}" transform="scale(1, -1)" style="display: inline-block;" width="{}px"><path d="{:?}" /></svg>"#,
+        b.min_x(),
+        b.min_y(),
+        b.width(),
+        b.height(),
+        b.width() * 0.05,
+        path
+    ).unwrap();
 }
 
 pub struct FontDb {
@@ -379,16 +408,11 @@ impl FontDb {
 
         let file_path = self.path.join(ps_name);
         let db = if file_path.is_file() {
-            Some(Arc::new(
-                postcard::from_bytes(&std::fs::read(&file_path).unwrap()).unwrap(),
-            ))
+            Some(Arc::new(postcard::from_bytes(&std::fs::read(&file_path).unwrap()).unwrap()))
         } else {
             None
         };
-        self.cache
-            .write()
-            .unwrap()
-            .insert(ps_name.into(), db.clone());
+        self.cache.write().unwrap().insert(ps_name.into(), db.clone());
         db
     }
     pub fn font_report(&self, ps_name: &str, font: &(dyn Font + Sync + Send)) -> String {
@@ -400,7 +424,7 @@ impl FontDb {
     pub fn check_font(
         &self,
         ps_name: &str,
-        font: &(dyn Font + Sync + Send),
+        font: &(dyn Font + Sync + Send)
     ) -> Option<Arc<HashMap<GlyphId, SmallString>>> {
         let db = self.get_db(ps_name)?;
         let out = check_font(&db, ps_name, font, None).map(Arc::new);
@@ -412,18 +436,10 @@ impl FontDb {
 }
 
 pub fn max(a: f32, b: f32) -> f32 {
-    if a > b {
-        a
-    } else {
-        b
-    }
+    if a > b { a } else { b }
 }
 pub fn min(a: f32, b: f32) -> f32 {
-    if a > b {
-        b
-    } else {
-        a
-    }
+    if a > b { b } else { a }
 }
 
 #[derive(Serialize, Deserialize)]

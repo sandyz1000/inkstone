@@ -1,18 +1,17 @@
+use crate::dom::prelude::*;
 use nom::{
-    IResult,
-    bytes::complete::{tag, take_while_m_n},
-    character::complete::{alpha1, space0, digit1},
-    combinator::{map, map_res},
-    sequence::tuple,
     branch::alt,
-    Err::Failure
+    bytes::complete::{tag, take_while_m_n},
+    character::complete::{alpha1, digit1, space0},
+    combinator::{map, map_res},
+    Err::Failure,
+    IResult, Parser,
 };
-use crate::prelude::*;
 
 fn is_hex_digit(c: char) -> bool {
     match c {
-        '0' ..= '9' | 'a' ..= 'f' | 'A' ..= 'F' => true,
-        _ => false
+        '0'..='9' | 'a'..='f' | 'A'..='F' => true,
+        _ => false,
     }
 }
 
@@ -23,29 +22,19 @@ fn from_decimal(input: &str) -> Result<u8, std::num::ParseIntError> {
     u8::from_str(input)
 }
 fn hex_byte(input: &str) -> IResult<&str, u8, ()> {
-    map_res(
-      take_while_m_n(2, 2, is_hex_digit),
-      from_hex
-    )(input)
+    map_res(take_while_m_n(2, 2, is_hex_digit), from_hex)(input)
 }
 
 fn hex_nibble(input: &str) -> IResult<&str, u8, ()> {
-    map(
-        map_res(
-            take_while_m_n(1, 1, is_hex_digit),
-            from_hex
-        ),
-        |n| 16 * n
-    )(input)
+    map(map_res(take_while_m_n(1, 1, is_hex_digit), from_hex), |n| {
+        16 * n
+    })(input)
 }
 fn integer(input: &str) -> IResult<&str, u8, ()> {
-    map_res(
-        digit1,
-        from_decimal
-    )(input)
+    map_res(digit1, from_decimal)(input)
 }
 fn percent(i: &str) -> IResult<&str, u8, ()> {
-    let (i, (pc, _)) = tuple((integer, tag("%")))(i)?;
+    let (i, pc) = (integer, tag("%")).parse(i)?;
     if pc > 100 {
         Err(Failure(()))
     } else {
@@ -54,17 +43,14 @@ fn percent(i: &str) -> IResult<&str, u8, ()> {
     }
 }
 fn comma(input: &str) -> IResult<&str, (), ()> {
-    map(
-        tag(","),
-        |_| ()
-    )(input)
+    map(tag(","), |_| ())(input)
 }
 fn hex_color(i: &str) -> IResult<&str, Color, ()> {
-    let (i, (_, r, g, b)) = tuple((tag("#"), hex_byte, hex_byte, hex_byte))(i)?;
+    let (i, (_, r, g, b)) = (tag("#"), hex_byte, hex_byte, hex_byte).parse(i)?;
     Ok((i, Color::from_srgb_u8(r, g, b)))
 }
 fn short_hex_color(i: &str) -> IResult<&str, Color, ()> {
-    let (i, (_, r, g, b)) = tuple((tag("#"), hex_nibble, hex_nibble, hex_nibble))(i)?;
+    let (i, (_, r, g, b)) = (tag("#"), hex_nibble, hex_nibble, hex_nibble).parse(i)?;
     Ok((i, Color::from_srgb_u8(r, g, b)))
 }
 fn color_name(i: &str) -> IResult<&str, Color, ()> {
@@ -74,7 +60,7 @@ fn color_name(i: &str) -> IResult<&str, Color, ()> {
             let (_, (r, g, b)) = COLOR_NAMES[idx];
             Ok((i, Color::from_srgb_u8(r, g, b)))
         }
-        _ => Err(nom::Err::Error(()))
+        _ => Err(nom::Err::Error(())),
     }
 }
 // "rgb(" wsp* integer comma integer comma integer wsp* ")"
@@ -111,14 +97,17 @@ pub fn color(i: &str) -> IResult<&str, Color, ()> {
         short_hex_color,
         rgb_color,
         rgb_percent_color,
-        color_name
+        color_name,
     ))(i)
 }
 
 #[test]
 fn test_color() {
     assert!(color("rgb(1,2,3)").is_ok());
-    assert_eq!(color("#012345").unwrap().1, Color::from_srgb_u8(0x01, 0x23, 0x45));
+    assert_eq!(
+        color("#012345").unwrap().1,
+        Color::from_srgb_u8(0x01, 0x23, 0x45)
+    );
 }
 
 static COLOR_NAMES: &[(&str, (u8, u8, u8))] = &[

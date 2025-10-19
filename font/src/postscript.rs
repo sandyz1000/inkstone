@@ -505,18 +505,18 @@ impl Vm {
     }
     fn get_array(&self, key: ArrayKey) -> &Array {
         match self.arrays.get(key).expect("no item for key") {
-            (ref array, _) => array
+            (array, _) => array
         }
     }
     fn get_array_mut(&mut self, key: ArrayKey) -> &mut Array {
         match self.arrays.get_mut(key).expect("no item for key") {
-            (ref mut array, Mode { write: true, .. }) => array,
+            (array, Mode { write: true, .. }) => array,
             _ => panic!("array is locked")
         }
     }
     fn exec_array(&mut self, key: ArrayKey, input: &mut Input) {
         let array = match self.arrays.get(key).expect("no item for key") {
-            (ref array, Mode { execute: true, .. } ) => array.clone(),
+            (array, Mode { execute: true, .. } ) => array.clone(),
             _ => panic!("not executable")
         };
         
@@ -526,12 +526,12 @@ impl Vm {
     }
     fn get_dict(&self, key: DictKey) -> &Dictionary {
         match self.dicts.get(key).expect("no item for key") {
-            (ref dict, _) => dict
+            (dict, _) => dict
         }
     }
     fn get_dict_mut(&mut self, key: DictKey) -> &mut Dictionary {
         match self.dicts.get_mut(key).expect("no item for key") {
-            (ref mut dict, Mode { write: true, .. }) => dict,
+            (dict, Mode { write: true, .. }) => dict,
             _ => panic!("dict is locked")
         }
     }
@@ -605,7 +605,7 @@ impl Vm {
                     let mut pos = 0;
                     loop {
                         match self.arrays.get(key).expect("no item for key") {
-                            (ref items, Mode { execute: true, .. }) => {
+                            (items, Mode { execute: true, .. }) => {
                                 match items.get(pos) {
                                     Some(&item) => self.exec(item, input)?,
                                     None => break
@@ -676,7 +676,7 @@ impl Vm {
                     (Item::Literal(lit), Item::Dict(dict_key)) => {
                         let font_name = String::from_utf8(self.get_lit(lit).to_owned())
                             .expect("Font name is not valid UTF-8");
-                        let (_, ref mut mode) = self.dicts.get_mut(dict_key).unwrap();
+                        let (_, mode) = self.dicts.get_mut(dict_key).unwrap();
                         mode.read_only();
                         self.fonts.insert(font_name, dict_key);
                         self.push(Item::Dict(dict_key));

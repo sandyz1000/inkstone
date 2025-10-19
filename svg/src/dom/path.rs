@@ -1,12 +1,7 @@
-use pathfinder_geometry::{
-    transform2d::{Matrix2x2F},
-};
-use pathfinder_content::{
-    outline::{Outline, ArcDirection, Contour},
-};
-use roxmltree::{Node};
-use crate::prelude::*;
-use crate::parse_element;
+use pathfinder_content::outline::{Outline, ArcDirection, Contour};
+use roxmltree::Node;
+use crate::dom::prelude::*;
+use crate::dom::parse_element;
 
 
 #[inline]

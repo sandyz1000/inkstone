@@ -1,36 +1,37 @@
 // Refer this: https://github.com/rust-windowing/glutin/blob/master/glutin_examples/src/lib.rs
 // https://github.com/rust-windowing/winit/blob/master/examples/window.rs#L127
 // On resumed create the glwindow
-use crate::config::{Config, Icon};
-use crate::context::{Context, ViewBackend};
+use crate::config::{ Config, Icon };
+use crate::context::{ Context, ViewBackend };
 
 use crate::round_v_to_16;
-use crate::{Emitter, Interactive};
+use crate::{ Emitter, Interactive };
 
 use pathfinder_geometry::vector::vec2f;
-use pathfinder_renderer::options::{BuildOptions, RenderTransform};
+use pathfinder_renderer::options::{ BuildOptions, RenderTransform };
 use pathfinder_renderer::scene::Scene;
 use std::rc::Rc;
 use winit::application::ApplicationHandler;
-use winit::dpi::{PhysicalPosition, PhysicalSize};
+use winit::dpi::{ PhysicalPosition, PhysicalSize };
 use winit::event::{
-    ElementState as WinitElementState, MouseButton, MouseScrollDelta, RawKeyEvent, WindowEvent,
+    ElementState as WinitElementState,
+    MouseButton,
+    MouseScrollDelta,
+    RawKeyEvent,
+    WindowEvent,
 };
-use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop, EventLoopProxy};
+use winit::event_loop::{ ActiveEventLoop, ControlFlow, EventLoop, EventLoopProxy };
 use winit::keyboard::ModifiersState;
 use winit::window::Window;
 
-use std::{ffi::CStr, num::NonZeroU32};
+use std::{ ffi::CStr, num::NonZeroU32 };
 
-use pathfinder_geometry::{
-    rect::RectF,
-    vector::{Vector2F, Vector2I},
-};
-use pathfinder_gl::{GLDevice, GLVersion};
+use pathfinder_geometry::{ rect::RectF, vector::{ Vector2F, Vector2I } };
+use pathfinder_gl::{ GLDevice, GLVersion };
 use pathfinder_renderer::{
-    concurrent::{executor::SequentialExecutor, rayon::RayonExecutor, scene_proxy::SceneProxy},
+    concurrent::{ executor::SequentialExecutor, rayon::RayonExecutor, scene_proxy::SceneProxy },
     gpu::{
-        options::{DestFramebuffer, RendererLevel, RendererMode, RendererOptions},
+        options::{ DestFramebuffer, RendererLevel, RendererMode, RendererOptions },
         renderer::Renderer,
     },
 };
@@ -39,13 +40,13 @@ use winit::raw_window_handle::HasWindowHandle;
 use gl;
 
 use glutin::{
-    config::{Api, ConfigTemplateBuilder, GlConfig},
+    config::{ Api, ConfigTemplateBuilder, GlConfig },
     context::NotCurrentGlContext,
-    context::{PossiblyCurrentContext, Version},
-    display::{GetGlDisplay, GlDisplay},
-    surface::{GlSurface, Surface, WindowSurface},
+    context::{ PossiblyCurrentContext, Version },
+    display::{ GetGlDisplay, GlDisplay },
+    surface::{ GlSurface, Surface, WindowSurface },
 };
-use glutin_winit::{DisplayBuilder, GlWindow as GlutinGlWindow};
+use glutin_winit::{ DisplayBuilder, GlWindow as GlutinGlWindow };
 // use winit::{dpi::PhysicalSize, event_loop::EventLoop, window::Window};
 
 struct AppState {
@@ -64,7 +65,6 @@ struct AppState {
     renderer: Renderer<GLDevice>,
 }
 
-
 struct App<I> {
     template: ConfigTemplateBuilder,
     display_builder: DisplayBuilder,
@@ -78,10 +78,7 @@ struct App<I> {
 
 impl AppState {
     pub fn render(&mut self, mut scene: Scene, options: BuildOptions) {
-        scene.set_view_box(RectF::new(
-            Vector2F::default(),
-            self.framebuffer_size.to_f32(),
-        ));
+        scene.set_view_box(RectF::new(Vector2F::default(), self.framebuffer_size.to_f32()));
         self.proxy.replace_scene(scene);
 
         self.proxy.build_and_render(&mut self.renderer, options);
@@ -97,7 +94,7 @@ impl AppState {
             self.gl_surface.resize(
                 &self.gl_context,
                 NonZeroU32::new(self.framebuffer_size.x() as u32).unwrap(),
-                NonZeroU32::new(self.framebuffer_size.y() as u32).unwrap(),
+                NonZeroU32::new(self.framebuffer_size.y() as u32).unwrap()
             );
             self.renderer.options_mut().dest = DestFramebuffer::full_window(new_framebuffer_size);
         }
@@ -120,10 +117,7 @@ impl AppState {
     }
 }
 
-impl<'a, I> ApplicationHandler for App<I> 
-where
-    I: Interactive<Backend = NativeBackend, Event = ()>,
-{
+impl<'a, I> ApplicationHandler for App<I> where I: Interactive<Backend = NativeBackend, Event = ()> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         self.create_window(event_loop);
     }
@@ -132,7 +126,7 @@ where
         &mut self,
         event_loop: &winit::event_loop::ActiveEventLoop,
         window_id: winit::window::WindowId,
-        event: WindowEvent,
+        event: WindowEvent
     ) {
         let app_state = self.state.as_mut().unwrap();
 
@@ -148,18 +142,13 @@ where
                 let scene = self.item.scene(&mut app_state.ctx);
                 app_state.render(scene, options);
                 app_state.ctx.redraw_requested = false;
-            
             }
 
-            WindowEvent::ScaleFactorChanged {
-                scale_factor,
-                mut inner_size_writer,
-            } => {
+            WindowEvent::ScaleFactorChanged { scale_factor, mut inner_size_writer } => {
                 app_state.ctx.set_scale_factor(scale_factor as f32);
                 let width = app_state.ctx.window_size.x().ceil() as u32;
                 let height = app_state.ctx.window_size.y().ceil() as u32;
-                app_state.ctx
-                    .set_window_size(Vector2F::new(width as f32, height as f32));
+                app_state.ctx.set_window_size(Vector2F::new(width as f32, height as f32));
                 let new_inner_size = PhysicalSize::new(width, height);
                 inner_size_writer
                     .request_inner_size(new_inner_size)
@@ -186,14 +175,10 @@ where
                     state: event.state,
                     physical_key: event.physical_key,
                 };
-                self.item
-                    .keyboard_input(&mut app_state.ctx, app_state.modifiers, raw_kevt);
+                self.item.keyboard_input(&mut app_state.ctx, app_state.modifiers, raw_kevt);
             }
 
-            WindowEvent::CursorMoved {
-                position: PhysicalPosition { x, y },
-                ..
-            } => {
+            WindowEvent::CursorMoved { position: PhysicalPosition { x, y }, .. } => {
                 let new_pos = Vector2F::new(x as f32, y as f32);
                 let cursor_delta = new_pos - app_state.cursor_pos;
                 app_state.cursor_pos = new_pos;
@@ -205,19 +190,24 @@ where
                 }
             }
 
-            WindowEvent::MouseInput {
-                button: MouseButton::Left,
-                state,
-                ..
-            } => match (state, app_state.modifiers.shift_key()) {
-                (WinitElementState::Pressed, true) if app_state.ctx.config.pan => app_state.dragging = true,
-                (WinitElementState::Released, _) if app_state.dragging => app_state.dragging = false,
-                _ => {
-                    let page_nr = app_state.ctx.page_nr;
-                    self.item
-                        .mouse_input(&mut app_state.ctx, page_nr, app_state.cursor_pos, state);
+            WindowEvent::MouseInput { button: MouseButton::Left, state, .. } =>
+                match (state, app_state.modifiers.shift_key()) {
+                    (WinitElementState::Pressed, true) if app_state.ctx.config.pan => {
+                        app_state.dragging = true;
+                    }
+                    (WinitElementState::Released, _) if app_state.dragging => {
+                        app_state.dragging = false;
+                    }
+                    _ => {
+                        let page_nr = app_state.ctx.page_nr;
+                        self.item.mouse_input(
+                            &mut app_state.ctx,
+                            page_nr,
+                            app_state.cursor_pos,
+                            state
+                        );
+                    }
                 }
-            },
 
             WindowEvent::MouseWheel { delta, .. } => {
                 let delta = match delta {
@@ -245,29 +235,23 @@ where
     }
 }
 
-impl<'a, I> App<I> 
-where
-    I: Interactive<Backend = NativeBackend, Event = ()>,
-{
+impl<'a, I> App<I> where I: Interactive<Backend = NativeBackend, Event = ()> {
     pub fn new(title: String, window_size: Vector2F, config: Config, item: I) -> Self {
         let config = Rc::new(config);
         let window_builder = Window::default_attributes()
             .with_title(title)
             .with_decorations(config.borders)
-            .with_inner_size(PhysicalSize::new(
-                window_size.x() as f64,
-                window_size.y() as f64,
-            ))
+            .with_inner_size(PhysicalSize::new(window_size.x() as f64, window_size.y() as f64))
             .with_transparent(config.transparent);
         let display_builder = DisplayBuilder::new().with_window_attributes(Some(window_builder));
+
+        // Use GL 3.0 as default to match RendererLevel::D3D9
         let (_glutin_gl_version, renderer_gl_version, api) = match config.render_level {
-            RendererLevel::D3D9 => (Version::new(3, 0), GLVersion::GLES3, Api::GLES3),
+            RendererLevel::D3D9 => (Version::new(3, 0), GLVersion::GL3, Api::OPENGL),
             RendererLevel::D3D11 => (Version::new(4, 3), GLVersion::GL4, Api::OPENGL),
         };
 
-        let template_builder = ConfigTemplateBuilder::new()
-            .with_alpha_size(8)
-            .with_api(api);
+        let template_builder = ConfigTemplateBuilder::new().with_alpha_size(8).with_api(api);
 
         App {
             display_builder,
@@ -276,19 +260,19 @@ where
             template: template_builder,
             gl_version: renderer_gl_version,
             state: None,
-            item
+            item,
         }
     }
 
     fn create_window(&mut self, event_loop: &ActiveEventLoop) -> Option<Rc<Window>> {
-        let (window, gl_config) = self
-            .display_builder
+        let (window, gl_config) = self.display_builder
             .clone()
             .build(event_loop, self.template.clone(), |configs| {
                 configs
                     .reduce(|accum, config| {
-                        let transparency_check = config.supports_transparency().unwrap_or(false)
-                            & !accum.supports_transparency().unwrap_or(false);
+                        let transparency_check =
+                            config.supports_transparency().unwrap_or(false) &
+                            !accum.supports_transparency().unwrap_or(false);
 
                         if transparency_check || config.num_samples() > accum.num_samples() {
                             config
@@ -308,15 +292,13 @@ where
         let gl_display = gl_config.display();
 
         // The context creation part.
-        let context_attributes =
-            glutin::context::ContextAttributesBuilder::new().build(Some(raw_window_handle));
+        let context_attributes = glutin::context::ContextAttributesBuilder
+            ::new()
+            .build(Some(raw_window_handle));
 
         let attrs = window.build_surface_attributes(<_>::default()).unwrap();
         let gl_surface = unsafe {
-            gl_config
-                .display()
-                .create_window_surface(&gl_config, &attrs)
-                .unwrap()
+            gl_config.display().create_window_surface(&gl_config, &attrs).unwrap()
         };
 
         let windowed_context = unsafe {
@@ -341,9 +323,10 @@ where
             level: self.config.render_level,
         };
         let framebuffer_size = (self.window_size * dpi).to_i32();
+        let dest = DestFramebuffer::full_window(framebuffer_size);
 
         let render_options = RendererOptions {
-            dest: DestFramebuffer::full_window(framebuffer_size),
+            dest,
             background_color: Some(self.config.background),
             show_debug_ui: false,
         };
@@ -352,7 +335,7 @@ where
             GLDevice::new(self.gl_version, 0),
             &*self.config.resource_loader,
             render_mode,
-            render_options,
+            render_options
         );
         let backend = NativeBackend::new(window.clone(), self.window_size);
         let mut ctx = Context::new(self.config.clone(), backend);
@@ -379,7 +362,6 @@ where
 
         Some(window)
     }
-
 }
 
 impl<U: 'static> Emitter<EventLoopProxy<U>> {
@@ -390,7 +372,7 @@ impl<U: 'static> Emitter<EventLoopProxy<U>> {
 
 pub struct NativeBackend {
     window: Rc<Window>,
-    window_size: Vector2F
+    window_size: Vector2F,
 }
 
 impl NativeBackend {
@@ -439,36 +421,32 @@ impl ViewBackend for NativeBackend {
     }
 
     fn set_icon(&mut self, icon: Icon) {
-        self.window.set_window_icon(Some(
-            winit::window::Icon::from_rgba(icon.data, icon.width, icon.height).unwrap(),
-        ));
+        self.window.set_window_icon(
+            Some(winit::window::Icon::from_rgba(icon.data, icon.width, icon.height).unwrap())
+        );
     }
 }
 
 fn env_vec(name: &str) -> Option<Vector2F> {
-    use tuple::{Map, TupleElements, T2};
+    use tuple::{ Map, TupleElements, T2 };
     let val = std::env::var(name).ok()?;
     let t2 = T2::from_iter(val.splitn(2, ","))?;
     let T2(x, y) = t2.map(|s: &str| s.parse().ok()).collect()?;
     Some(Vector2F::new(x, y))
 }
 
-
-pub fn show<T>(item: T, config: Config)
-where
-    T: Interactive<Backend = NativeBackend, Event = ()>,
-{
+pub fn show<T>(item: T, config: Config) where T: Interactive<Backend = NativeBackend, Event = ()> {
     log::info!("creating event loop");
     let event_loop = EventLoop::<()>::with_user_event().build().unwrap();
-    let window_size = item.window_size_hint().unwrap_or(vec2f(600., 400.));
-    
+    let window_size = item.window_size_hint().unwrap_or(vec2f(600.0, 400.0));
+
     log::info!("entering the event loop");
 
     // ControlFlow::Wait pauses the event loop if no events are available to process.
     // This is ideal for non-game applications that only update in response to user
     // input, and uses significantly less power/CPU time than ControlFlow::Poll.
     event_loop.set_control_flow(ControlFlow::Wait);
-    
+
     let mut app = App::new(item.title(), window_size, config, item);
     let _ = event_loop.run_app(&mut app).unwrap();
 }

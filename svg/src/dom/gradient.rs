@@ -1,3 +1,4 @@
+use crate::dom::prelude::*;
 use pathfinder_color::ColorU;
 use svgtypes::Color;
 
@@ -48,9 +49,12 @@ impl ParseNode for TagLinearGradient {
             var y2: Option<LengthY>,
             var id,
         });
-        let gradient_transform = node.attribute("gradientTransform").map(transform_list).transpose()?;
+        let gradient_transform = node
+            .attribute("gradientTransform")
+            .map(transform_list)
+            .transpose()?;
         let href = href(node);
-    
+
         let mut stops = Vec::new();
         for elem in node.children().filter(|n| n.is_element()) {
             match elem.tag_name().name() {
@@ -58,14 +62,14 @@ impl ParseNode for TagLinearGradient {
                 _ => {}
             }
         }
-    
+
         Ok(TagLinearGradient {
             from: (x1, y1),
             to: (x2, y2),
             gradient_transform,
             stops,
             id,
-            href
+            href,
         })
     }
 }
@@ -79,9 +83,12 @@ impl ParseNode for TagRadialGradient {
             var r: Option<Length>,
             var id,
         });
-        let gradient_transform = node.attribute("gradientTransform").map(transform_list).transpose()?;
+        let gradient_transform = node
+            .attribute("gradientTransform")
+            .map(transform_list)
+            .transpose()?;
         let href = href(node);
-    
+
         let mut stops = Vec::new();
         for elem in node.children().filter(|n| n.is_element()) {
             match elem.tag_name().name() {
@@ -89,7 +96,7 @@ impl ParseNode for TagRadialGradient {
                 _ => {}
             }
         }
-    
+
         Ok(TagRadialGradient {
             center: (cx, cy),
             focus: (fx, fy),
@@ -109,9 +116,15 @@ impl TagStop {
 
     fn apply<'a>(&mut self, key: &'a str, val: &'a str) -> Result<(), Error> {
         match key {
-            "offset" => self.offset = number_or_percent(val)?,
-            "stop-opacity" => self.opacity = opacity(val)?,
-            "stop-color" => self.color = Color::from_str(val)?,
+            "offset" => {
+                self.offset = number_or_percent(val)?;
+            }
+            "stop-opacity" => {
+                self.opacity = opacity(val)?;
+            }
+            "stop-color" => {
+                self.color = Color::from_str(val)?;
+            }
             "style" => {
                 for (key, val) in style_list(val) {
                     self.apply(key, val)?;
@@ -124,7 +137,7 @@ impl TagStop {
 
     pub fn color_u(&self, opacity: f32) -> ColorU {
         let Color { red, green, blue, alpha } = self.color;
-        let alpha = (opacity * self.opacity * 255.) as u8;
+        let alpha = (opacity * self.opacity * 255.0) as u8;
         ColorU::new(red, green, blue, alpha)
     }
 }
@@ -142,9 +155,8 @@ impl ParseNode for TagStop {
 
 fn number_or_percent(s: &str) -> Result<f32, Error> {
     match Length::from_str(s)? {
-        Length { num, unit: LengthUnit::None } => Ok(num as f32),
-        Length { num, unit: LengthUnit::Percent } => Ok(0.01 * num as f32),
-        _ => Err(Error::InvalidAttributeValue("number or percent".into()))
+        Length { number, unit: LengthUnit::None } => Ok(number as f32),
+        Length { number, unit: LengthUnit::Percent } => Ok(0.01 * (number as f32)),
+        _ => Err(Error::InvalidAttributeValue("number or percent".into())),
     }
 }
-

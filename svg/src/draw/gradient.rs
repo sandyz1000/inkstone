@@ -1,9 +1,7 @@
 use crate::dom::{TagLinearGradient, TagRadialGradient};
 use pathfinder_content::gradient::Gradient;
-use pathfinder_color::ColorU;
 use pathfinder_geometry::line_segment::LineSegment2F;
 use pathfinder_simd::default::F32x2;
-use svgtypes::Color;
 
 struct PartialLinearGradient<'a> {
     from: (Option<LengthX>, Option<LengthY>),

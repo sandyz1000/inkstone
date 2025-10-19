@@ -1,12 +1,14 @@
-use crate::{
-    backend::FillMode,
-    BlendMode,
-};
+use crate::{ backend::FillMode, BlendMode };
 use font::GlyphId;
-use pathfinder_geometry::{transform2d::Transform2F, vector::Vector2F};
+use pathfinder_geometry::{ transform2d::Transform2F, vector::Vector2F };
 
 use super::{
-    fontentry::FontEntry, graphicsstate::GraphicsState, BBox, Backend, DrawMode, TextChar,
+    fontentry::FontEntry,
+    graphicsstate::GraphicsState,
+    BBox,
+    Backend,
+    DrawMode,
+    TextChar,
 };
 use itertools::Either;
 use pdf::content::TextMode;
@@ -15,32 +17,32 @@ use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct TextState {
-    pub text_matrix: Transform2F,           // tracks current glyph
-    pub line_matrix: Transform2F,           // tracks current line
-    pub char_space: f32,                    // Character spacing
-    pub word_space: f32,                    // Word spacing
-    pub horiz_scale: f32,                   // Horizontal scaling
-    pub leading: f32,                       // Leading
+    pub text_matrix: Transform2F, // tracks current glyph
+    pub line_matrix: Transform2F, // tracks current line
+    pub char_space: f32, // Character spacing
+    pub word_space: f32, // Word spacing
+    pub horiz_scale: f32, // Horizontal scaling
+    pub leading: f32, // Leading
     pub font_entry: Option<Arc<FontEntry>>, // Text font
-    pub font_size: f32,                     // Text font size
-    pub mode: TextMode,                     // Text rendering mode
-    pub rise: f32,                          // Text rise
-    pub knockout: f32,                      //Text knockout
+    pub font_size: f32, // Text font size
+    pub mode: TextMode, // Text rendering mode
+    pub rise: f32, // Text rise
+    pub knockout: f32, //Text knockout
 }
 impl TextState {
     pub fn new() -> TextState {
         TextState {
             text_matrix: Transform2F::default(),
             line_matrix: Transform2F::default(),
-            char_space: 0.,
-            word_space: 0.,
-            horiz_scale: 1.,
-            leading: 0.,
+            char_space: 0.0,
+            word_space: 0.0,
+            horiz_scale: 1.0,
+            leading: 0.0,
             font_entry: None,
-            font_size: 0.,
+            font_size: 0.0,
             mode: TextMode::Fill,
-            rise: 0.,
-            knockout: 0.,
+            rise: 0.0,
+            knockout: 0.0,
         }
     }
     pub fn reset_matrix(&mut self) {
@@ -53,7 +55,7 @@ impl TextState {
 
     // move to the next line
     pub fn next_line(&mut self) {
-        self.translate(Vector2F::new(0., -self.leading));
+        self.translate(Vector2F::new(0.0, -self.leading));
     }
     // set text and line matrix
     pub fn set_matrix(&mut self, m: Transform2F) {
@@ -67,7 +69,7 @@ impl TextState {
         data: &[u8],
         span: &mut Span,
         fill_mode: BlendMode,
-        stroke_mode: BlendMode,
+        stroke_mode: BlendMode
     ) {
         let e = match self.font_entry {
             Some(ref e) => e,
@@ -78,19 +80,13 @@ impl TextState {
         };
 
         let codepoints = if e.is_cid {
-            Either::Left(
-                data.chunks_exact(2)
-                    .map(|s| u16::from_be_bytes(s.try_into().unwrap())),
-            )
+            Either::Left(data.chunks_exact(2).map(|s| u16::from_be_bytes(s.try_into().unwrap())))
         } else {
             Either::Right(data.iter().map(|&b| b as u16))
         };
 
         let glyphs = codepoints.map(|cid| {
-            (
-                cid,
-                e.cmap.get(&cid).map(|&(gid, ref uni)| (gid, uni.clone())),
-            )
+            (cid, e.cmap.get(&cid).map(|&(gid, ref uni)| (gid, uni.clone())))
         });
 
         let fill = FillMode {
@@ -108,31 +104,35 @@ impl TextState {
         let draw_mode = match self.mode {
             TextMode::Fill => Some(DrawMode::Fill { fill }),
             TextMode::FillAndClip => Some(DrawMode::Fill { fill }),
-            TextMode::FillThenStroke => Some(DrawMode::FillStroke {
-                fill,
-                stroke,
-                stroke_mode,
-            }),
+            TextMode::FillThenStroke =>
+                Some(DrawMode::FillStroke {
+                    fill,
+                    stroke,
+                    stroke_mode,
+                }),
             TextMode::Invisible => None,
-            TextMode::Stroke => Some(DrawMode::Stroke {
-                stroke,
-                stroke_mode,
-            }),
-            TextMode::StrokeAndClip => Some(DrawMode::Stroke {
-                stroke,
-                stroke_mode,
-            }),
+            TextMode::Stroke =>
+                Some(DrawMode::Stroke {
+                    stroke,
+                    stroke_mode,
+                }),
+            TextMode::StrokeAndClip =>
+                Some(DrawMode::Stroke {
+                    stroke,
+                    stroke_mode,
+                }),
         };
         let e = self.font_entry.as_ref().expect("no font");
 
-        let tr = Transform2F::row_major(
-            self.horiz_scale * self.font_size,
-            0.,
-            0.,
-            0.,
-            self.font_size,
-            self.rise,
-        ) * e.font.font_matrix();
+        let tr =
+            Transform2F::row_major(
+                self.horiz_scale * self.font_size,
+                0.0,
+                0.0,
+                0.0,
+                self.font_size,
+                self.rise
+            ) * e.font.font_matrix();
 
         for (cid, t) in glyphs {
             let (gid, unicode, is_space) = match t {
@@ -145,8 +145,7 @@ impl TextState {
             //debug!("cid {} -> gid {:?} {:?}", cid, gid, unicode);
 
             let glyph = e.font.glyph(gid);
-            let width: f32 = e
-                .widths
+            let width: f32 = e.widths
                 .as_ref()
                 .map(|w| w.get(cid as usize) * 0.001 * self.horiz_scale * self.font_size)
                 .or_else(|| glyph.as_ref().map(|g| tr.m11() * g.metrics.advance))
@@ -155,7 +154,7 @@ impl TextState {
             if is_space {
                 let advance = (self.char_space + self.word_space) * self.horiz_scale + width;
                 self.text_matrix =
-                    self.text_matrix * Transform2F::from_translation(Vector2F::new(advance, 0.));
+                    self.text_matrix * Transform2F::from_translation(Vector2F::new(advance, 0.0));
 
                 let offset = span.text.len();
                 span.text.push(' ');
@@ -169,9 +168,8 @@ impl TextState {
             }
             if let Some(glyph) = glyph {
                 let transform = gs.transform * self.text_matrix * tr;
-                if glyph.path.len() != 0 {
-                    span.bbox
-                        .add(gs.transform * transform * glyph.path.bounds());
+                if !glyph.path.contours().is_empty() {
+                    span.bbox.add(gs.transform * transform * glyph.path.bounds());
                     if let Some(ref draw_mode) = draw_mode {
                         backend.draw_glyph(&glyph, draw_mode, transform, gs.clip_path_id);
                     }
@@ -181,7 +179,7 @@ impl TextState {
             }
             let advance = self.char_space * self.horiz_scale + width;
             self.text_matrix =
-                self.text_matrix * Transform2F::from_translation(Vector2F::new(advance, 0.));
+                self.text_matrix * Transform2F::from_translation(Vector2F::new(advance, 0.0));
 
             let offset = span.text.len();
             if let Some(s) = unicode {
@@ -199,7 +197,7 @@ impl TextState {
         //debug!("advance by {}", delta);
         let advance = delta * self.font_size * self.horiz_scale;
         self.text_matrix =
-            self.text_matrix * Transform2F::from_translation(Vector2F::new(advance, 0.));
+            self.text_matrix * Transform2F::from_translation(Vector2F::new(advance, 0.0));
         advance
     }
 }

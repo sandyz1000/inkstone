@@ -1,3 +1,4 @@
+use crate::dom::prelude::*;
 use roxmltree::Node;
 use svgtypes::Length;
 

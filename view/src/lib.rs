@@ -76,7 +76,6 @@ pub trait Interactive: 'static {
 }
 
 
-
 fn round_to_16(i: i32) -> i32 {
     (i + 15) & !0xf
 }

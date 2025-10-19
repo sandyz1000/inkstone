@@ -113,7 +113,7 @@ macro_rules! parse {
 
 // enum_dispatch breaks RLS, so we do it manually
 macro_rules! items {
-    ($(#[$meta:meta])* pub enum $name:ident { $($($e:pat )|* => $variant:ident($data:ty), )* } { $($other:ident($other_data:ty),)* }) => {
+    ($(#[$meta:meta])* pub enum $name:ident { $($($e:tt )|* => $variant:ident($data:ty), )* } { $($other:ident($other_data:ty),)* }) => {
         $( #[$meta] )*
         pub enum $name {
             $( $variant($data), )*

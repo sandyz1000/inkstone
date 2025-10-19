@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::dom::prelude::*;
 
 use pathfinder_content::outline::{Outline, Contour};
 use svgtypes::PointsParser;

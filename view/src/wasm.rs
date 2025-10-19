@@ -1,42 +1,45 @@
 use log::*;
 use pathfinder_geometry::rect::RectF;
-use pathfinder_geometry::{
-    transform2d::Transform2F,
-    vector::{vec2f, Vector2F, Vector2I},
-};
+use pathfinder_geometry::{ transform2d::Transform2F, vector::{ vec2f, Vector2F, Vector2I } };
 
 use pathfinder_renderer::scene::Scene;
 use pdf::any::AnySync;
 use pdf::backend::Backend;
-use pdf::file::{Cache as PdfCache, File as PdfFile, FileOptions, Log};
+use pdf::file::{ Cache as PdfCache, File as PdfFile, FileOptions, Log };
 use pdf::PdfError;
-use pdf_render::{page_bounds, render_page, Cache, SceneBackend};
+use pdf_render::{ page_bounds, render_page, Cache, SceneBackend };
 use std::path::Path;
 use std::rc::Rc;
 use std::sync::Arc;
 
 use pathfinder_webgl::WebGlDevice;
 use wasm_bindgen::prelude::wasm_bindgen;
-use web_sys::UiEvent;
 use web_sys::{
-    Event, HtmlCanvasElement, KeyboardEvent, MouseEvent, WebGl2RenderingContext, WheelEvent, Window,
+    Event,
+    HtmlCanvasElement,
+    KeyboardEvent,
+    MouseEvent,
+    WebGl2RenderingContext,
+    WheelEvent,
+    Window,
 };
 use winit::{
-    event::{ElementState, KeyEvent, Modifiers, RawKeyEvent},
-    keyboard::{KeyCode, ModifiersState, PhysicalKey},
+    event::{ ElementState, KeyEvent, Modifiers, RawKeyEvent },
+    keyboard::{ KeyCode, ModifiersState, PhysicalKey },
 };
 
 use pathfinder_renderer::concurrent::executor::SequentialExecutor;
+use pathfinder_renderer::concurrent::scene_proxy::SceneProxy;
 use pathfinder_renderer::gpu::{
-    options::{DestFramebuffer, RendererMode, RendererOptions},
+    options::{ DestFramebuffer, RendererLevel, RendererMode, RendererOptions },
     renderer::Renderer,
 };
-use pathfinder_renderer::options::{BuildOptions, RenderTransform};
+use pathfinder_renderer::options::{ BuildOptions, RenderTransform };
 
-use crate::config::{view_box, Config, Icon};
-use crate::context::{Context, ViewBackend};
+use crate::config::{ view_box, Config, Icon };
+use crate::context::{ Context, ViewBackend };
 use crate::round_v_to_16;
-use crate::{Emitter, Interactive};
+use crate::{ Emitter, Interactive };
 
 pub struct PdfView<B: Backend, OC, SC, L> {
     file: PdfFile<B, OC, SC, L>,
@@ -45,11 +48,11 @@ pub struct PdfView<B: Backend, OC, SC, L> {
 }
 
 impl<B, OC, SC, L> PdfView<B, OC, SC, L>
-where
-    B: Backend + 'static,
-    OC: PdfCache<Result<AnySync, Arc<PdfError>>> + 'static,
-    SC: PdfCache<Result<Arc<[u8]>, Arc<PdfError>>> + 'static,
-    L: Log,
+    where
+        B: Backend + 'static,
+        OC: PdfCache<Result<AnySync, Arc<PdfError>>> + 'static,
+        SC: PdfCache<Result<Arc<[u8]>, Arc<PdfError>>> + 'static,
+        L: Log
 {
     pub fn new(file: PdfFile<B, OC, SC, L>) -> Self {
         PdfView {
@@ -60,20 +63,19 @@ where
     }
 }
 
-impl<B, OC, SC, L> Interactive for PdfView<B, OC, SC, L>
-where
-    B: Backend + 'static,
-    OC: PdfCache<Result<AnySync, Arc<PdfError>>> + 'static,
-    SC: PdfCache<Result<Arc<[u8]>, Arc<PdfError>>> + 'static,
-    L: Log + 'static,
+impl<B, OC, SC, L> Interactive
+    for PdfView<B, OC, SC, L>
+    where
+        B: Backend + 'static,
+        OC: PdfCache<Result<AnySync, Arc<PdfError>>> + 'static,
+        SC: PdfCache<Result<Arc<[u8]>, Arc<PdfError>>> + 'static,
+        L: Log + 'static
 {
     type Event = Vec<u8>;
     type Backend = WasmBackend;
 
     fn title(&self) -> String {
-        self.file
-            .trailer
-            .info_dict
+        self.file.trailer.info_dict
             .as_ref()
             .and_then(|info| info.title.as_ref())
             .and_then(|p| p.to_string().ok())
@@ -83,13 +85,14 @@ where
     fn init(&mut self, ctx: &mut Context<Self::Backend>, sender: Emitter<Self::Event>) {
         ctx.num_pages = self.num_pages;
         ctx.set_icon(
-            image::load_from_memory_with_format(
-                include_bytes!("../../logo.png"),
-                image::ImageFormat::Png,
-            )
-            .unwrap()
-            .to_rgba8()
-            .into(),
+            image
+                ::load_from_memory_with_format(
+                    include_bytes!("../../logo.png"),
+                    image::ImageFormat::Png
+                )
+                .unwrap()
+                .to_rgba8()
+                .into()
         );
     }
 
@@ -111,7 +114,7 @@ where
         ctx: &mut Context<Self::Backend>,
         page: usize,
         pos: Vector2F,
-        state: ElementState,
+        state: ElementState
     ) {
         if state != ElementState::Pressed {
             return;
@@ -123,7 +126,7 @@ where
         &mut self,
         ctx: &mut Context<Self::Backend>,
         state: ModifiersState,
-        event: RawKeyEvent,
+        event: RawKeyEvent
     ) {
         if event.state == ElementState::Released {
             return;
@@ -133,13 +136,17 @@ where
             match event.physical_key {
                 PhysicalKey::Code(KeyCode::ArrowRight) => ctx.goto_page(page + 10),
                 PhysicalKey::Code(KeyCode::ArrowLeft) => ctx.goto_page(page.saturating_sub(10)),
-                _ => return,
+                _ => {
+                    return;
+                }
             }
         }
         match event.physical_key {
             PhysicalKey::Code(KeyCode::ArrowRight | KeyCode::PageDown) => ctx.next_page(),
             PhysicalKey::Code(KeyCode::ArrowLeft | KeyCode::PageUp) => ctx.prev_page(),
-            _ => return,
+            _ => {
+                return;
+            }
         }
     }
 }
@@ -303,7 +310,9 @@ pub fn virtual_key_code(event: &KeyboardEvent) -> Option<KeyCode> {
         "WebSearch" => KeyCode::BrowserSearch,
         "WebStop" => KeyCode::BrowserStop,
         // "Yen" => KeyCode::Yen,
-        _ => return None,
+        _ => {
+            return None;
+        }
     })
 }
 
@@ -346,7 +355,7 @@ impl WasmView {
         canvas: HtmlCanvasElement,
         context: WebGl2RenderingContext,
         config: Config,
-        mut item: ItemType,
+        mut item: ItemType
     ) -> Self {
         canvas.set_attribute("tabindex", "0").unwrap();
         canvas.set_attribute("contenteditable", "true").unwrap();
@@ -359,7 +368,7 @@ impl WasmView {
         ctx.set_scale_factor(scale_factor);
 
         // figure out the framebuffer, as that can only be integer values
-        let framebuffer_size = v_ceil(item.window_size_hint().unwrap_or(vec2f(100., 100.)));
+        let framebuffer_size = v_ceil(item.window_size_hint().unwrap_or(vec2f(100.0, 100.0)));
 
         // then figure out the css size
         ctx.window_size = framebuffer_size * (1.0 / ctx.scale_factor);
@@ -369,8 +378,9 @@ impl WasmView {
         let render_mode = RendererMode {
             level: ctx.config.render_level,
         };
+        let dest = DestFramebuffer::full_window(framebuffer_size.to_i32());
         let render_options = RendererOptions {
-            dest: DestFramebuffer::full_window(framebuffer_size.to_i32()),
+            dest,
             background_color: Some(ctx.config.background),
             show_debug_ui: false,
         };
@@ -379,15 +389,12 @@ impl WasmView {
             WebGlDevice::new(context),
             &*ctx.config.resource_loader,
             render_mode,
-            render_options,
+            render_options
         );
 
-        item.init(
-            &mut ctx,
-            Emitter {
-                inner: Vec::<u8>::new(),
-            },
-        );
+        item.init(&mut ctx, Emitter {
+            inner: Vec::<u8>::new(),
+        });
 
         WasmView {
             item,
@@ -417,25 +424,21 @@ impl WasmView {
         self.ctx.window_size = framebuffer_size * (1.0 / self.ctx.scale_factor);
 
         if framebuffer_size != self.framebuffer_size {
-            set_canvas_size(
-                &self.canvas,
-                self.ctx.window_size,
-                framebuffer_size.to_i32(),
+            set_canvas_size(&self.canvas, self.ctx.window_size, framebuffer_size.to_i32());
+            self.renderer.options_mut().dest = DestFramebuffer::full_window(
+                framebuffer_size.to_i32()
             );
-            self.renderer.options_mut().dest =
-                DestFramebuffer::full_window(framebuffer_size.to_i32());
             self.framebuffer_size = framebuffer_size;
         }
 
         // temp fix
-        scene.set_view_box(RectF::new(
-            Vector2F::default(),
-            round_v_to_16(framebuffer_size.to_i32()).to_f32(),
-        ));
+        scene.set_view_box(
+            RectF::new(Vector2F::default(), round_v_to_16(framebuffer_size.to_i32()).to_f32())
+        );
 
         let tr = if self.ctx.config.pan {
-            Transform2F::from_translation(self.ctx.window_size * 0.5)
-                * Transform2F::from_translation(-self.ctx.view_center)
+            Transform2F::from_translation(self.ctx.window_size * 0.5) *
+                Transform2F::from_translation(-self.ctx.view_center)
         } else {
             Transform2F::from_translation(-scene_view_box.origin())
         };
@@ -445,7 +448,12 @@ impl WasmView {
             subpixel_aa_enabled: false,
         };
 
-        scene.build_and_render(&mut self.renderer, options, SequentialExecutor);
+        let mut proxy = SceneProxy::from_scene(
+            scene,
+            self.ctx.config.render_level,
+            SequentialExecutor
+        );
+        proxy.build_and_render(&mut self.renderer, options);
         self.ctx.redraw_requested = false;
     }
 
@@ -472,11 +480,9 @@ impl WasmView {
 
         let scale = 1.0 / self.ctx.scale;
         let tr = if self.ctx.config.pan {
-            Transform2F::from_translation(self.ctx.view_center)
-                * Transform2F::from_scale(Vector2F::splat(scale))
-                * Transform2F::from_translation(
-                    self.ctx.window_size * (-0.5 * self.ctx.scale_factor),
-                )
+            Transform2F::from_translation(self.ctx.view_center) *
+                Transform2F::from_scale(Vector2F::splat(scale)) *
+                Transform2F::from_translation(self.ctx.window_size * (-0.5 * self.ctx.scale_factor))
         } else {
             Transform2F::from_scale(Vector2F::splat(scale))
         };
@@ -503,7 +509,9 @@ impl WasmView {
     fn keyboard_input(&mut self, event: &KeyboardEvent, state: ElementState) {
         let keycode = match virtual_key_code(&event) {
             Some(keycode) => keycode,
-            None => return,
+            None => {
+                return;
+            }
         };
 
         let rkevt = RawKeyEvent {
@@ -513,15 +521,14 @@ impl WasmView {
 
         let modifier_state = Modifiers::default().state();
 
-        self.item
-            .keyboard_input(&mut self.ctx, modifier_state, rkevt.clone());
+        self.item.keyboard_input(&mut self.ctx, modifier_state, rkevt.clone());
 
         if rkevt.state.is_pressed() {
             cancel(&event);
         }
     }
 
-    pub fn resize(&mut self, event: &UiEvent) -> bool {
+    pub fn resize(&mut self, _event: &Event) -> bool {
         self.ctx.set_scale_factor(scale_factor(&self.window));
         self.ctx.request_redraw();
         self.ctx.redraw_requested
@@ -572,7 +579,6 @@ pub fn window_size(window: &Window) -> Vector2F {
     Vector2F::new(width as f32, height as f32)
 }
 
-
 #[wasm_bindgen(start)]
 pub fn run() {
     std::panic::set_hook(Box::new(console_error_panic_hook::hook));
@@ -584,7 +590,7 @@ pub fn run() {
 pub fn show(
     canvas: HtmlCanvasElement,
     context: WebGl2RenderingContext,
-    data: &js_sys::Uint8Array,
+    data: &js_sys::Uint8Array
 ) -> WasmView {
     use pathfinder_resources::embedded::EmbeddedResourceLoader;
     let file = Path::new("ummy-path.pdf");

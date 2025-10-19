@@ -15,7 +15,7 @@ fn read_font(path: &str) -> Box<dyn Font + Sync + Send> {
 fn shapes(font: &dyn Font) -> Vec<(u32, Glyph)> {
     (1..font.num_glyphs())
         .filter_map(|n| Some((n, font.glyph(font::GlyphId(n))?)))
-        .filter(|(_, g)| g.path.len() > 0)
+        .filter(|(_, g)| !g.path.contours().is_empty())
         .collect()
 }
 

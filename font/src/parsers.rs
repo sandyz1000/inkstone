@@ -167,10 +167,10 @@ impl<'a> fmt::Debug for Token<'a> {
         match self {
             Token::Int(i) => i.fmt(f),
             Token::Real(r) => r.fmt(f),
-            Token::Literal(ref s) => write!(f, "/{}", String::from_utf8_lossy(&s)),
-            Token::Name(ref s) => write!(f, "{}", String::from_utf8_lossy(&s)),
-            Token::String(ref data) => write!(f, "({:?})", String::from_utf8_lossy(data)),
-            Token::Procedure(ref vec) => f.debug_set().entries(vec).finish(),
+            Token::Literal(s) => write!(f, "/{}", String::from_utf8_lossy(&s)),
+            Token::Name(s) => write!(f, "{}", String::from_utf8_lossy(&s)),
+            Token::String(data) => write!(f, "({:?})", String::from_utf8_lossy(data)),
+            Token::Procedure(vec) => f.debug_set().entries(vec).finish(),
         }
     }
 }

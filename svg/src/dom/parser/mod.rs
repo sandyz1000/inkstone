@@ -2,16 +2,16 @@ pub mod color;
 //mod time;
 
 use nom::{
-    sequence::{preceded, delimited, tuple},
+    sequence::{preceded, delimited},
     character::complete::{none_of, space0, space1},
-    bytes::complete::{tag},
+    bytes::complete::tag,
     branch::alt,
-    multi::{many1_count, separated_nonempty_list},
+    multi::{many1_count, separated_list1},
     combinator::{map, map_res, recognize, opt, all_consuming},
     number::complete::float,
     IResult,
 };
-use crate::prelude::*;
+use crate::dom::prelude::*;
 
 type R<'i, T> = IResult<&'i str, T, ()>;
 
@@ -45,7 +45,7 @@ pub fn parse_color(s: &str) -> Result<Color, Error> {
     match color::color(s) {
         Ok((_, color)) => Ok(color),
         Err(e) => {
-            debug!("parse_color({:?}): {:?}", s, e);
+            log::debug!("parse_color({:?}): {:?}", s, e);
             Err(Error::InvalidAttributeValue(s.into()))
         }
     }
@@ -59,7 +59,7 @@ pub fn parse_paint(s: &str) -> Result<Paint, Error> {
     ))(s) {
         Ok((_, paint)) => Ok(paint),
         Err(e) => {
-            debug!("parse_paint({:?}): {:?}", s, e);
+            log::debug!("parse_paint({:?}): {:?}", s, e);
             Err(Error::InvalidAttributeValue(s.into()))
         }
     }
@@ -115,10 +115,13 @@ pub fn one_or_three_numbers(s: &str) -> Result<(f32, Option<(f32, f32)>), Error>
     }
 }
 
-fn one_or_many<'a, O>(f: impl Fn(&'a str) -> IResult<&'a str, O, ()> + Copy) -> impl Fn(&'a str) -> IResult<&'a str, OneOrMany<O>, ()> {
+fn one_or_many<'a, O>(f: F) -> impl Fn(&'a str) -> IResult<&'a str, OneOrMany<O>, ()> 
+where
+    F: Fn(&'a str) -> IResult<&'a str, O, ()> + Copy
+{
     alt((
         map(all_consuming(f), |v| OneOrMany::One(v)),
-        map(separated_nonempty_list(list_sep, f), |v| OneOrMany::Many(v))
+        map(separated_list1(list_sep, f), |v: Vec<_>| OneOrMany::Many(v))
     ))
 }
 pub fn one_or_many_f32(s: &str) -> Result<OneOrMany<f32>, Error> {

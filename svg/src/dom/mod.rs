@@ -1,64 +1,138 @@
 use std::sync::Arc;
+use std::collections::HashMap;
 use roxmltree::NodeType;
+pub use roxmltree::Node;
 
-pub mod prelude {
-    pub use pathfinder_geometry::{
-        vector::{Vector2F, vec2f},
-        transform2d::Transform2F,
-        rect::RectF,
-    };
-    
-    pub use crate::dom::{
-        Tag, ParseNode, TagDefs,
-        animate::*,
-        attrs::*,
-        ellipse::*,
-        error::*,
-        filter::*,
-        g::*,
-        gradient::*,
-        paint::*,
-        path::*,
-        polygon::*,
-        rect::*,
-        svg::*,
-        text::*,
-        util::*,
-        value::*,
-    };
-    pub use roxmltree::Node;
-    pub use svgtypes::{Length, LengthUnit};
-    pub use std::str::FromStr;
-    pub use crate::util::Parse;
+// Declare all submodules first
+#[macro_use]
+mod macros;
+pub mod error;
+pub mod util;
 
-    use std::collections::HashMap;
-    use std::sync::Arc;
-    pub type ItemCollection = HashMap<String, Arc<Item>>;
-}
-
-#[macro_use] mod macros;
-mod animate;
+// These need to be after error and util since they depend on them
+mod parser;
+mod value;
 mod attrs;
+mod animate;
+mod paint;
+mod gradient;
 mod ellipse;
-mod error;
 mod filter;
 mod g;
-mod gradient;
-mod paint;
-mod parser;
 mod path;
 mod polygon;
 mod rect;
 mod svg;
 mod text;
-mod util;
-mod value;
 
+// Re-export commonly used items from submodules
+pub use error::Error;
+pub use util::{
+    Parse,
+    deg2rad,
+    skew_x,
+    skew_y,
+    transform_list,
+    LengthX,
+    LengthY,
+    Rect as DomRect,
+    Vector,
+    OneOrMany,
+    Iri,
+    Axis,
+    parse_attr,
+    parse_attr_or,
+    get_attr,
+    style_list,
+    href,
+};
+pub use value::{ Value, ValueVector };
+pub use attrs::Attrs;
+pub use animate::{ Animate, CalcMode, AnimationMode, TransformAnimate };
+pub use paint::{ Fill, Stroke, Paint, Color };
+pub use gradient::{ TagLinearGradient, TagRadialGradient, TagStop };
+pub use ellipse::{ TagCircle, TagEllipse };
+pub use filter::{ TagFilter };
+pub use g::{ TagG, TagUse, TagSymbol };
+pub use path::{ TagPath };
+pub use polygon::{ TagPolygon, TagPolyline };
+pub use rect::{ TagRect };
+pub use svg::TagSvg;
+pub use text::{ TagText, TagTSpan, TagTRef };
+
+// Type alias for item collections
+pub type ItemCollection = HashMap<String, Arc<Item>>;
+
+// Define prelude after modules are declared
+pub mod prelude {
+    pub use pathfinder_geometry::{
+        vector::{ Vector2F, vec2f },
+        transform2d::Transform2F,
+        rect::RectF,
+    };
+
+    pub use crate::dom::{
+        Tag,
+        ParseNode,
+        TagDefs,
+        Item,
+        Error,
+        Parse,
+        Node,
+        ItemCollection,
+        Value,
+        ValueVector,
+        Attrs,
+        Fill,
+        Stroke,
+        Paint,
+        Animate,
+        LengthX,
+        LengthY,
+        DomRect,
+        Vector,
+        Iri,
+        Color,
+        OneOrMany,
+        Axis,
+        CalcMode,
+        AnimationMode,
+        TransformAnimate,
+        TagLinearGradient,
+        TagRadialGradient,
+        TagStop,
+        TagCircle,
+        TagEllipse,
+        TagFilter,
+        TagG,
+        TagUse,
+        TagSymbol,
+        TagPath,
+        TagPolygon,
+        TagPolyline,
+        TagRect,
+        TagSvg,
+        TagText,
+        TagTSpan,
+        TagTRef,
+        deg2rad,
+        skew_x,
+        skew_y,
+        transform_list,
+    };
+
+    pub use svgtypes::{ Length, LengthUnit };
+    pub use std::str::FromStr;
+}
+
+// Re-export prelude items at module level for convenience
 pub use prelude::*;
-
-// enum_dispatch breaks RLS, so we do it manually
 macro_rules! items {
-    ($(#[$meta:meta])* pub enum $name:ident { $($($e:pat )|* => $variant:ident($data:ty), )* } { $($other:ident($other_data:ty),)* }) => {
+    (
+        $(#[$meta:meta])*
+        pub enum $name:ident { $($($e:tt)|* => $variant:ident($data:ty),)* }
+        { $($other:ident($other_data:ty),)* }
+    ) => {
         $( #[$meta] )*
         pub enum $name {
             $( $variant($data), )*
@@ -125,8 +199,12 @@ pub trait ParseNode: Sized {
 }
 
 pub trait Tag: std::fmt::Debug {
-    fn id(&self) -> Option<&str> { None }
-    fn children(&self) -> &[Arc<Item>] { &[] }
+    fn id(&self) -> Option<&str> {
+        None
+    }
+    fn children(&self) -> &[Arc<Item>] {
+        &[]
+    }
 }
 
 #[derive(Debug)]
@@ -145,7 +223,7 @@ impl ParseNode for TagDefs {
     }
 }
 
-fn link(ids: &mut ItemCollection, item: &Arc<Item>) {
+pub fn link(ids: &mut ItemCollection, item: &Arc<Item>) {
     if let Some(id) = item.id() {
         ids.insert(id.into(), item.clone());
     }
@@ -154,50 +232,56 @@ fn link(ids: &mut ItemCollection, item: &Arc<Item>) {
     }
 }
 
-fn parse_node(node: &Node, first: bool, last: bool) -> Result<Option<Item>, Error> {
+pub fn parse_node(node: &Node, first: bool, last: bool) -> Result<Option<Item>, Error> {
     match node.node_type() {
         NodeType::Element => parse_element(node),
         NodeType::Text => parse_text(node, first, last),
-        _ => Ok(None)
+        _ => Ok(None),
     }
 }
 
 fn parse_text(node: &Node, first: bool, last: bool) -> Result<Option<Item>, Error> {
-    Ok(node.text().and_then(|s| {
-        let mut last_is_space = first;
-        let mut processed: String = s.chars()
-        .filter_map(|c| {
-            if last_is_space {
-                match c {
-                    '\n' | '\t' | ' ' => None,
-                    _ => {
-                        last_is_space = false;
-                        Some(c)
+    Ok(
+        node.text().and_then(|s| {
+            let mut last_is_space = first;
+            let mut processed: String = s
+                .chars()
+                .filter_map(|c| {
+                    if last_is_space {
+                        match c {
+                            '\n' | '\t' | ' ' => None,
+                            _ => {
+                                last_is_space = false;
+                                Some(c)
+                            }
+                        }
+                    } else {
+                        match c {
+                            '\n' => None,
+                            '\t' | ' ' => {
+                                last_is_space = true;
+                                Some(' ')
+                            }
+                            c => Some(c),
+                        }
                     }
-                }
-            } else {
-                match c {
-                    '\n' => None,
-                    '\t' | ' ' => {
-                        last_is_space = true;
-                        Some(' ')
-                    }
-                    c => Some(c)
-                }
+                })
+                .collect();
+            if last && last_is_space && processed.len() > 0 {
+                processed.pop();
             }
-        }).collect();
-        if last && last_is_space && processed.len() > 0 {
-            processed.pop();
-        }
-        if processed.len() > 0 {
-            Some(Item::String(processed))
-        } else {
-            None
-        }
-    }))
+            if processed.len() > 0 {
+                Some(Item::String(processed))
+            } else {
+                None
+            }
+        })
+    )
 }
 
-fn parse_node_list<'a, 'i: 'a>(nodes: impl Iterator<Item=Node<'a, 'i>>) -> Result<Vec<Arc<Item>>, Error> {
+pub fn parse_node_list<'a, 'i: 'a>(
+    nodes: impl Iterator<Item = Node<'a, 'i>>
+) -> Result<Vec<Arc<Item>>, Error> {
     let mut items = Vec::new();
     for (first, last, node) in first_or_last_node(nodes) {
         match node.node_type() {
@@ -213,7 +297,9 @@ fn parse_node_list<'a, 'i: 'a>(nodes: impl Iterator<Item=Node<'a, 'i>>) -> Resul
 }
 
 // (first, last, node)
-fn first_or_last_node<'a, 'i: 'a>(nodes: impl Iterator<Item=Node<'a, 'i>>) -> impl Iterator<Item=(bool, bool, Node<'a, 'i>)> {
+pub fn first_or_last_node<'a, 'i: 'a>(
+    nodes: impl Iterator<Item = Node<'a, 'i>>
+) -> impl Iterator<Item = (bool, bool, Node<'a, 'i>)> {
     let mut nodes = nodes.enumerate().peekable();
     std::iter::from_fn(move || nodes.next().map(|(i, node)| (i == 0, nodes.peek().is_none(), node)))
 }

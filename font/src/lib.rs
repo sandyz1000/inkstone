@@ -1,26 +1,28 @@
 #![allow(unused)]
-#![cfg_attr(feature="unstable", feature(thread_local, type_alias_impl_trait))]
-#[macro_use] extern crate log;
-#[macro_use] extern crate slotmap;
+#![cfg_attr(feature = "unstable", feature(thread_local, type_alias_impl_trait))]
+#[macro_use]
+extern crate log;
+#[macro_use]
+extern crate slotmap;
 
 use std::fmt;
 use std::convert::TryInto;
 use std::any::TypeId;
-use nom::{IResult, Err::*, error::Error as NomError};
-use tuple::{TupleElements};
+use nom::{ IResult, Err::*, error::Error as NomError };
+use tuple::{ TupleElements };
 use pdf_encoding::Encoding;
 
 // #[cfg(feature="svg")]
 // pub use svg::SvgGlyph;
 
-use pathfinder_geometry::{rect::RectF, vector::Vector2F, transform2d::Transform2F};
-use pathfinder_content::outline::{Outline, Contour};
+use pathfinder_geometry::{ rect::RectF, vector::Vector2F, transform2d::Transform2F };
+use pathfinder_content::outline::{ Outline, Contour };
 
 #[derive(Clone)]
 pub struct Glyph {
     /// unit 1em
     pub metrics: HMetrics,
-    
+
     /// transform by font_matrix to scale it to 1em
     pub path: Outline,
 }
@@ -37,7 +39,7 @@ pub struct VMetrics {
 #[derive(Copy, Clone, Default)]
 pub struct HMetrics {
     pub lsb: f32,
-    pub advance: f32
+    pub advance: f32,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -59,15 +61,15 @@ pub trait Font: 'static {
     /// This may or may not correlate to the actual number of "real glyphs".
     /// It does however define the highest valid glyph id (*gid*) as `num_glyphs() - 1`
     fn num_glyphs(&self) -> u32;
-    
+
     /// The transformation to get from glyph space (which all methods use) into text space with a unit of 1em.
     fn font_matrix(&self) -> Transform2F;
-    
+
     /// Get the glyph identified by `gid`.
     ///
     /// Note, that a *gid* is only meaningful within one font and cannot be transfered to another font.
     fn glyph(&self, gid: GlyphId) -> Option<Glyph>;
-    
+
     fn is_empty_glyph(&self, gid: GlyphId) -> bool;
 
     // #[cfg(feature="svg")]
@@ -82,14 +84,14 @@ pub trait Font: 'static {
     fn gid_for_codepoint(&self, _codepoint: u32) -> Option<GlyphId> {
         None
     }
-    
+
     /// Get the *gid* for the glyph with the given *name*.
     ///
     /// Returns None if the underlying font does not define any names, or does not contain a glyph with this name.
     fn gid_for_name(&self, _name: &str) -> Option<GlyphId> {
         None
     }
-    
+
     /// Get the *gid* for the glyph that corresponds to the single unicode scalar `codepoint`.
     ///
     /// Returns None if the font if the codepoint cannot be mapped to a glyph for whatever reason.
@@ -99,31 +101,31 @@ pub trait Font: 'static {
             .and_then(|reverse| reverse.get(codepoint))
             .and_then(|cp| self.gid_for_codepoint(cp as u32))
     }
-    
+
     /// The "native encoding" of this font.
     ///
     /// Returns None if this term does not apply or it isn't defined.
     fn encoding(&self) -> Option<Encoding> {
         None
     }
-    
+
     /// The *gid* of the `.notdef' glyph.
     fn get_notdef_gid(&self) -> GlyphId {
         GlyphId(0)
     }
-    
+
     /// The *bounding box* of all glyphs.
     ///
     /// No glyph **should** contain contours outside this rectangle.
     fn bbox(&self) -> Option<RectF> {
         None
     }
-    
+
     /// Vertical metrics of the font (common across all glyphs)
     fn vmetrics(&self) -> Option<VMetrics> {
         None
     }
-    
+
     /// Kerning distance for the given glyph pair
     fn kerning(&self, _left: GlyphId, _right: GlyphId) -> f32 {
         0.0
@@ -166,39 +168,40 @@ mod macros;
 #[macro_use]
 mod error;
 
-#[cfg(feature="opentype")]
+#[cfg(feature = "opentype")]
 mod truetype;
-#[cfg(feature="cff")]
+#[cfg(feature = "cff")]
 mod cff;
-#[cfg(feature="type1")]
+#[cfg(feature = "type1")]
 mod type1;
-#[cfg(feature="type2")]
+#[cfg(feature = "type2")]
 mod type2;
-#[cfg(feature="postscript")]
+#[cfg(feature = "postscript")]
 mod postscript;
-#[cfg(feature="opentype")]
+#[cfg(feature = "opentype")]
 pub mod opentype;
 mod parsers;
 mod eexec;
 
-#[cfg(feature="woff")]
+#[cfg(feature = "woff")]
 mod woff;
 
-// #[cfg(feature="svg")]
+// TODO: Fix circular dependency between font and pdf_svg
 // mod svg;
 
 pub use error::FontError;
-#[cfg(feature="opentype")]
+// pub use svg::SvgGlyph;
+#[cfg(feature = "opentype")]
 pub use truetype::TrueTypeFont;
-#[cfg(feature="cff")]
+#[cfg(feature = "cff")]
 pub use cff::CffFont;
-#[cfg(feature="type1")]
+#[cfg(feature = "type1")]
 pub use type1::Type1Font;
-#[cfg(feature="opentype")]
+#[cfg(feature = "opentype")]
 pub use opentype::OpenTypeFont;
 
-#[cfg(feature="woff")]
-pub use woff::{parse_woff, parse_woff2};
+#[cfg(feature = "woff")]
+pub use woff::{ parse_woff, parse_woff2 };
 
 pub type R<'a, T> = IResult<&'a [u8], T, NomError<&'a [u8]>>;
 pub type ParseResult<'a, T> = Result<(&'a [u8], T), FontError>;
@@ -206,13 +209,13 @@ pub type ParseResult<'a, T> = Result<(&'a [u8], T), FontError>;
 #[derive(Copy, Clone)]
 pub enum Value {
     Int(i32),
-    Float(f32)
+    Float(f32),
 }
 impl fmt::Debug for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Value::Int(i) => i.fmt(f),
-            Value::Float(x) => x.fmt(f)
+            Value::Float(x) => x.fmt(f),
         }
     }
 }
@@ -247,7 +250,7 @@ impl Value {
     fn to_int(self) -> Result<i32, FontError> {
         match self {
             Value::Int(i) => Ok(i),
-            Value::Float(_) => Err(FontError::TypeError("tried to cast a float to int"))
+            Value::Float(_) => Err(FontError::TypeError("tried to cast a float to int")),
         }
     }
 
@@ -256,7 +259,7 @@ impl Value {
         match self {
             Value::Int(i) if i >= 0 => Ok(i as u32),
             Value::Int(_) => Err(FontError::TypeError("expected a unsigned int")),
-            Value::Float(_) => Err(FontError::TypeError("tried to cast a float to int"))
+            Value::Float(_) => Err(FontError::TypeError("tried to cast a float to int")),
         }
     }
     #[inline]
@@ -264,14 +267,14 @@ impl Value {
         match self {
             Value::Int(i) if i >= 0 => Ok(i as usize),
             Value::Int(_) => Err(FontError::TypeError("expected a unsigned int")),
-            Value::Float(_) => Err(FontError::TypeError("tried to cast a float to int"))
+            Value::Float(_) => Err(FontError::TypeError("tried to cast a float to int")),
         }
     }
     #[inline]
     fn to_float(self) -> f32 {
         match self {
             Value::Int(i) => i as f32,
-            Value::Float(f) => f
+            Value::Float(f) => f,
         }
     }
 }
@@ -294,8 +297,8 @@ impl TryIndex for Vec<Option<Vec<u8>>> {
     #[inline]
     fn try_index(&self, idx: usize) -> Option<&[u8]> {
         match self.get(idx) {
-            Some(Some(ref v)) => Some(&**v),
-            _ => None
+            Some(Some(v)) => Some(&**v),
+            _ => None,
         }
     }
 }
@@ -317,9 +320,8 @@ impl<'a> TryIndex for &'a [&'a [u8]] {
         self.get(idx).map(|v| *v)
     }
 }
-    
 
-pub struct Context<T=(), U=()> {
+pub struct Context<T = (), U = ()> {
     pub subr_bias: i32,
     pub subrs: T,
     pub global_subrs: U,
@@ -331,14 +333,14 @@ impl<T, U> Context<T, U> where T: TryIndex, U: TryIndex {
     pub fn subr(&self, idx: i32) -> Result<&[u8], FontError> {
         match self.subrs.try_index((idx + self.subr_bias) as usize) {
             Some(sub) => Ok(sub),
-            None => error!("requested subroutine {} not found", idx)
+            None => error!("requested subroutine {} not found", idx),
         }
     }
     #[inline]
     pub fn global_subr(&self, idx: i32) -> Result<&[u8], FontError> {
         match self.global_subrs.try_index((idx + self.global_subr_bias) as usize) {
             Some(sub) => Ok(sub),
-            None => error!("requested global subroutine {} not found", idx)
+            None => error!("requested global subroutine {} not found", idx),
         }
     }
 }
@@ -354,7 +356,7 @@ pub struct State {
     pub stem_hints: u32,
     pub delta_width: Option<f32>,
     pub first_stack_clearing_operator: bool,
-    pub flex_sequence: Option<Vec<Vector2F>>
+    pub flex_sequence: Option<Vec<Vector2F>>,
 }
 
 impl State {
@@ -371,7 +373,7 @@ impl State {
             stem_hints: 0,
             delta_width: None,
             first_stack_clearing_operator: true,
-            flex_sequence: None
+            flex_sequence: None,
         }
     }
     #[inline]
@@ -417,18 +419,14 @@ impl State {
         Ok(expect!(self.stack.pop(), "no value on the stack"))
     }
     #[inline]
-    fn pop_tuple<T>(&mut self) -> Result<T, FontError> where
-        T: TupleElements<Element=Value>
-    {
-        let range = self.stack.len() - T::N ..;
+    fn pop_tuple<T>(&mut self) -> Result<T, FontError> where T: TupleElements<Element = Value> {
+        let range = self.stack.len() - T::N..;
         Ok(expect!(T::from_iter(self.stack.drain(range)), "not enoug data on the stack"))
     }
     /// get stack[0 .. T::N] as a tuple
     /// does not modify the stack
     #[inline]
-    pub fn args<T>(&mut self) -> Result<T, FontError> where
-        T: TupleElements<Element=Value>
-    {
+    pub fn args<T>(&mut self) -> Result<T, FontError> where T: TupleElements<Element = Value> {
         trace!("get {} args from {:?}", T::N, self.stack);
         Ok(expect!(T::from_iter(self.stack.iter().cloned()), "not enough data on the stack"))
     }
@@ -459,7 +457,7 @@ impl<T> IResultExt for IResult<&[u8], T, NomError<&[u8]>> {
     fn get(self) -> Result<T, FontError> {
         match self {
             Ok((_, t)) => Ok(t),
-            Err(e) => Err(FontError::from(e))
+            Err(e) => Err(FontError::from(e)),
         }
     }
 }
@@ -480,7 +478,7 @@ pub enum FontType {
 pub fn font_type(data: &[u8]) -> Option<FontType> {
     let t = match data.get(0..4)? {
         &[0x80, 1, _, _] => FontType::Type1Pfb,
-        b"OTTO" | [0,1,0,0] => FontType::OpenType,
+        b"OTTO" | [0, 1, 0, 0] => FontType::OpenType,
         b"ttcf" | b"typ1" => FontType::TrueTypeCollection,
         b"true" => FontType::TrueType,
         b"%!PS" => FontType::Type1,
@@ -488,42 +486,48 @@ pub fn font_type(data: &[u8]) -> Option<FontType> {
         b"wOF2" => FontType::Woff2,
         &[1, _, _, _] => FontType::Cff,
         &[37, 33, _, _] => FontType::Type1Pfa,
-        _ => return None
+        _ => {
+            return None;
+        }
     };
     Some(t)
 }
 
 pub fn parse(data: &[u8]) -> Result<Box<dyn Font + Send + Sync + 'static>, FontError> {
-    let magic: &[u8; 4] = slice!(data, 0 .. 4).try_into().unwrap();
+    let magic: &[u8; 4] = slice!(data, 0..4)
+        .try_into()
+        .unwrap();
     info!("font magic: {:?} ({:?})", magic, String::from_utf8_lossy(&*magic));
     Ok(match magic {
-        #[cfg(feature="type1")]
+        #[cfg(feature = "type1")]
         &[0x80, 1, _, _] => Box::new(t!(Type1Font::parse_pfb(data))) as _,
-        
-        #[cfg(feature="opentype")]
-        b"OTTO" | [0,1,0,0] => Box::new(t!(OpenTypeFont::parse(data))) as _,
-        
+
+        #[cfg(feature = "opentype")]
+        b"OTTO" | [0, 1, 0, 0] => Box::new(t!(OpenTypeFont::parse(data))) as _,
+
         b"ttcf" | b"typ1" => error!("FontCollections not implemented"), // Box::new(TrueTypeFont::parse(data, 0)) as _,
-        
-        #[cfg(feature="opentype")]
+
+        #[cfg(feature = "opentype")]
         b"true" => Box::new(t!(TrueTypeFont::parse(data))) as _,
-        
-        #[cfg(feature="type1")]
+
+        #[cfg(feature = "type1")]
         b"%!PS" => Box::new(t!(Type1Font::parse_postscript(data))) as _,
 
-        #[cfg(feature="woff")]
+        #[cfg(feature = "woff")]
         b"wOFF" => Box::new(t!(woff::parse_woff(data))) as _,
 
-        #[cfg(feature="woff")]
+        #[cfg(feature = "woff")]
         b"wOF2" => Box::new(t!(woff::parse_woff2(data))) as _,
 
-        #[cfg(feature="cff")]
+        #[cfg(feature = "cff")]
         &[1, _, _, _] => Box::new(t!(CffFont::parse(data, 0))) as _,
-        
-        #[cfg(feature="type1")]
+
+        #[cfg(feature = "type1")]
         &[37, 33, _, _] => Box::new(t!(Type1Font::parse_pfa(data))) as _,
 
-        magic => return Err(FontError::UnknownMagic(*magic))
+        magic => {
+            return Err(FontError::UnknownMagic(*magic));
+        }
     })
 }
 
@@ -536,11 +540,11 @@ pub struct FontInfo {
 }
 
 pub fn font_info(data: &[u8]) -> Option<FontInfo> {
-    let magic: &[u8; 4] = data[0 .. 4].try_into().ok()?;
+    let magic: &[u8; 4] = data[0..4].try_into().ok()?;
     info!("font magic: {:?} ({:?})", magic, String::from_utf8_lossy(&*magic));
     match magic {
-        #[cfg(feature="opentype")]
-        b"OTTO" | [0,1,0,0] => OpenTypeFont::info(data).ok(),
-        _ => None
+        #[cfg(feature = "opentype")]
+        b"OTTO" | [0, 1, 0, 0] => OpenTypeFont::info(data).ok(),
+        _ => None,
     }
 }
