@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-pdf_render = { path = "../../render" }
+inkrender = { path = "../crates/render" }
 pdf = { workspace = true }
 structopt = "*"
 pathfinder_export = { workspace = true }

@@ -6,5 +6,5 @@ edition = "2021"
 [dependencies]
 image = { workspace = true }
 pathfinder_svg = { workspace = true }
-rasterize = { path = "../../rasterize" }
+rasterize = { path = "../crates/rasterize" }
 usvg = "*"

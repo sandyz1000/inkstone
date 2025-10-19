@@ -1,15 +1,16 @@
 [workspace]
 members = [
-    "render",
-    "view",
-    "font",
-    "glyph-matcher",
-    "encoding",
-    "rasterize",
+    "crates/viewer",
+    "crates/render",
+    "crates/font",
+    "crates/glyph-matcher",
+    "crates/encoding",
+    "crates/rasterize",
+    "crates/istring",
+    # "crates/svg",
     "inkstone",
-    "istring",
     "web-app",
-    # "svg",
+    "native-app",
     # TODO: Fix the bugs in example
     # "examples/*",
 ]

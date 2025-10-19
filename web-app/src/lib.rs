@@ -3,6 +3,7 @@ mod components;
 mod viewer;
 mod engine;
 mod utils;
+mod wasm;
 
 pub use app::App;
 

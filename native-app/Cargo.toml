@@ -1,0 +1,46 @@
+[package]
+name = "native-app"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+description = "Native PDF viewer using GPUI"
+
+[features]
+unstable = []
+
+[dependencies.pdf]
+workspace = true
+default-features = false
+features = ["dump"]
+
+[dependencies]
+viewer = { path = "../crates/viewer" }
+pathfinder_renderer = { workspace = true }
+pathfinder_geometry = { workspace = true }
+pathfinder_color = { workspace = true }
+pathfinder_resources = { workspace = true }
+pathfinder_content = { workspace = true }
+pathfinder_export = { workspace = true }
+pathfinder_gl = { workspace = true }
+log = { workspace = true }
+inkrender = { path = "../crates/render" }
+inkfont = { path = "../crates/font" }
+inkencoding = { path = "../crates/encoding" }
+
+itertools = { workspace = true }
+image = { workspace = true }
+env_logger = { workspace = true }
+
+# GPUI dependencies
+gpui = "0.2.0"
+gpui-component = "0.2.0"
+
+[dev-dependencies]
+criterion = "0.7.0"
+
+[[bin]]
+name = "inkstone-viewer"
+path = "src/main.rs"
+
+[lib]
+crate-type = ["rlib"]

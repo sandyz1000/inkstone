@@ -1,0 +1,19 @@
+[package]
+name = "viewer"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+description = "Core types and traits for PDF viewer implementations"
+
+[dependencies]
+pathfinder_renderer = { workspace = true }
+pathfinder_geometry = { workspace = true }
+pathfinder_color = { workspace = true }
+pathfinder_content = { workspace = true }
+pathfinder_resources = { workspace = true }
+pdf = { workspace = true, default-features = false, features = ["dump"] }
+inkrender = { path = "../render" }
+inkfont = { path = "../font" }
+log = { workspace = true }
+itertools = { workspace = true }
+image = { workspace = true }
