@@ -1,21 +1,17 @@
-use std::path::{PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use pdf::object::*;
 use pdf::primitive::Name;
-use pdf::font::{Font as PdfFont};
-use pdf::error::{Result};
+use pdf::font::Font as PdfFont;
+use pdf::error::Result;
 
-use pathfinder_geometry::{
-    vector::{Vector2I},
-};
-use pathfinder_content::{
-    pattern::{Image},
-};
+use pathfinder_geometry::vector::Vector2I;
+use pathfinder_content::pattern::Image;
 
 use crate::BlendMode;
 
-use super::{fontentry::FontEntry};
+use super::fontentry::FontEntry;
 use super::image::load_image;
 use super::font::{load_font, StandardCache};
 use globalcache::{sync::SyncCache, ValueSize};

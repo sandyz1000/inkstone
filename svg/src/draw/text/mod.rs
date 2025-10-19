@@ -2,12 +2,12 @@ mod chunk;
 
 use crate::draw_glyph;
 use crate::prelude::*;
-use chunk::{Chunk, ChunkLayout};
+use chunk::{ Chunk, ChunkLayout };
 use std::collections::HashMap;
 use std::fmt;
-use std::sync::{Arc, Mutex};
-use svg_text::{Font, FontCollection};
-use unic_segment::{GraphemeIndices, WordBounds};
+use std::sync::{ Arc, Mutex };
+use crate::text::{ Font, FontCollection };
+use unic_segment::{ GraphemeIndices, WordBounds };
 
 #[derive(Clone)]
 pub struct FontCache<'a> {
@@ -38,16 +38,7 @@ impl DrawItem for TagText {
         };
 
         if let Some(ref font_cache) = options.ctx.font_cache {
-            draw_items(
-                scene,
-                &options,
-                font_cache,
-                &self.pos,
-                &self.items,
-                state,
-                0,
-                None,
-            );
+            draw_items(scene, &options, font_cache, &self.pos, &self.items, state, 0, None);
         }
     }
     fn bounds(&self, options: &BoundsOptions) -> Option<RectF> {
@@ -77,7 +68,7 @@ fn chunk(
     options: &DrawOptions,
     s: &str,
     state: TextState,
-    font_collection: &FontCollection,
+    font_collection: &FontCollection
 ) -> Vector2F {
     debug!("{} {:?}", s, state);
     let layout = Chunk::new(s, options.direction).layout(font_collection, options.lang);
@@ -92,7 +83,7 @@ fn draw_items(
     items: &[Arc<Item>],
     mut state: TextState,
     mut char_idx: usize,
-    parent_moves: Option<&Moves>,
+    parent_moves: Option<&Moves>
 ) -> (TextState, usize) {
     let fallback = &font_cache.fallback;
     let moves = Moves::new(pos, char_idx, parent_moves);
@@ -129,7 +120,7 @@ fn draw_items(
                     &span.items,
                     state,
                     char_idx,
-                    Some(&moves),
+                    Some(&moves)
                 );
                 state = new_state;
                 char_idx = new_idx;
@@ -146,14 +137,15 @@ fn draw_layout(
     layout: &ChunkLayout,
     scene: &mut Scene,
     options: &DrawOptions,
-    state: TextState,
+    state: TextState
 ) -> Vector2F {
     for &(_, offset, ref sublayout) in &layout.parts {
         for glyph in &sublayout.glyphs {
-            let chunk_tr = Transform2F::from_translation(state.pos)
-                * Transform2F::from_rotation(deg2rad(state.rot))
-                * Transform2F::from_scale(options.font_size)
-                * Transform2F::from_translation(offset + glyph.offset);
+            let chunk_tr =
+                Transform2F::from_translation(state.pos) *
+                Transform2F::from_rotation(deg2rad(state.rot)) *
+                Transform2F::from_scale(options.font_size) *
+                Transform2F::from_translation(offset + glyph.offset);
             let tr = chunk_tr * glyph.transform;
             let font = &font_collection[glyph.font_idx];
             if let Some(ref svg) = font.svg_glyph(glyph.gid) {
@@ -167,7 +159,9 @@ fn draw_layout(
 }
 
 fn slice<T>(o: &Option<OneOrMany<T>>) -> &[T] {
-    o.as_ref().map(|l| l.as_slice()).unwrap_or(&[])
+    o.as_ref()
+        .map(|l| l.as_slice())
+        .unwrap_or(&[])
 }
 
 #[derive(Debug)]
@@ -233,30 +227,26 @@ impl<'a> Moves<'a> {
                 .sum();
             vec2f(
                 dx.map(|l| l.resolve(options)).unwrap_or(0.0) + dx2,
-                dy.map(|l| l.resolve(options)).unwrap_or(0.0) + dy2,
+                dy.map(|l| l.resolve(options)).unwrap_or(0.0) + dy2
             )
         };
 
-        match (
-            self.x(idx),
-            self.y(idx),
-            self.dx(idx),
-            self.dy(idx),
-            self.rotate(idx),
-        ) {
+        match (self.x(idx), self.y(idx), self.dx(idx), self.dy(idx), self.rotate(idx)) {
             (None, None, None, None, None) => None,
-            (None, None, dx, dy, phi) => Some(Move {
-                abs_x: None,
-                abs_y: None,
-                rel: rel(dx, dy),
-                rot: phi,
-            }),
-            (x, y, dx, dy, phi) => Some(Move {
-                abs_x: x.map(|l| l.resolve(options)),
-                abs_y: y.map(|l| l.resolve(options)),
-                rel: rel(dx, dy),
-                rot: phi,
-            }),
+            (None, None, dx, dy, phi) =>
+                Some(Move {
+                    abs_x: None,
+                    abs_y: None,
+                    rel: rel(dx, dy),
+                    rot: phi,
+                }),
+            (x, y, dx, dy, phi) =>
+                Some(Move {
+                    abs_x: x.map(|l| l.resolve(options)),
+                    abs_y: y.map(|l| l.resolve(options)),
+                    rel: rel(dx, dy),
+                    rot: phi,
+                }),
         }
     }
 }

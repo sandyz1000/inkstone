@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Inkstone - A modern PDF viewer for the web">
+    <title>Inkstone PDF Viewer</title>
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        #main {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Loading screen */
+        #loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #1e1e1e;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            color: #e0e0e0;
+        }
+
+        #loading.hidden {
+            display: none;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading-text {
+            font-size: 16px;
+            color: #999;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Loading screen -->
+    <div id="loading">
+        <div class="spinner"></div>
+        <div class="loading-text">Loading Inkstone PDF Viewer...</div>
+    </div>
+
+    <!-- Main app container -->
+    <div id="main"></div>
+
+    <!-- WASM module will be loaded here -->
+    <script type="module">
+        import init from './pkg/inkstone_web.js';
+
+        async function run() {
+            try {
+                await init();
+                console.log('Inkstone PDF Viewer initialized successfully');
+
+                // Hide loading screen
+                document.getElementById('loading').classList.add('hidden');
+            } catch (error) {
+                console.error('Failed to initialize app:', error);
+                document.getElementById('loading').innerHTML = `
+                    <div style="text-align: center; padding: 20px;">
+                        <h2 style="color: #ff6b6b; margin-bottom: 10px;">Failed to Load</h2>
+                        <p style="color: #999;">${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        run();
+    </script>
+</body>
+
+</html>

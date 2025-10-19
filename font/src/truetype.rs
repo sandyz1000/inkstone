@@ -264,10 +264,13 @@ pub fn get_outline(shapes: &[Shape], idx: u32) -> Option<Outline> {
         &Shape::Compound(ref parts) => {
             let mut outline = Outline::new();
             for &(gid, tr) in parts {
-                if let Some(Shape::Simple(ref path)) = shapes.get(gid as usize) {
+                if let Some(Shape::Simple(path)) = shapes.get(gid as usize) {
                     let mut path = path.clone();
                     path.transform(&tr);
-                    outline.push_outline(path);
+                    for contour in path.contours() {
+                        outline.push_contour(contour.clone());
+                    }
+                    // outline.push_outline(path);
                 }
             }
             Some(outline)

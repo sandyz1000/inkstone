@@ -4,7 +4,7 @@ use pathfinder_geometry::{
     rect::RectF,
 };
 use svgtypes::{TransformListParser, TransformListToken, Length, LengthListParser};
-use crate::error::Error;
+use crate::dom::error::Error;
 use std::str::FromStr;
 use roxmltree::Node;
 
@@ -137,7 +137,7 @@ pub fn href(node: &Node) -> Option<String> {
 pub struct Iri(pub String);
 impl Parse for Iri {
     fn parse(s: &str) -> Result<Self, Error> {
-        match crate::parser::func_iri(s) {
+        match crate::dom::parser::func_iri(s) {
             Ok(("", link)) => Ok(Iri(link.into())),
             _ => Err(Error::InvalidAttributeValue(s.into()))
         }
@@ -232,6 +232,6 @@ impl<T> OneOrMany<T> {
 }
 impl Parse for OneOrMany<f32> {
     fn parse(s: &str) -> Result<Self, Error> {
-        crate::parser::one_or_many_f32(s)
+        crate::dom::parser::one_or_many_f32(s)
     }
 }

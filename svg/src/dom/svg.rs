@@ -1,9 +1,9 @@
-use crate::prelude::*;
-use crate::{parse_node, parse_node_list, link};
+use crate::dom::prelude::*;
+use crate::dom::{parse_node, parse_node_list, link};
 use libflate::gzip::Decoder;
 
 use std::sync::Arc;
-use roxmltree::{Document};
+use roxmltree::Document;
 
 #[derive(Debug)]
 pub struct TagSvg {

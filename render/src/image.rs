@@ -126,8 +126,8 @@ pub fn load_image(image: &ImageXObject, resources: &Resources, resolve: &impl Re
         type Target = [u8];
         fn deref(&self) -> &[u8] {
             match self {
-                Data::Arc(ref d) => &**d,
-                Data::Vec(ref d) => &*d,
+                Data::Arc(d) => &**d,
+                Data::Vec(d) => &*d,
                 Data::Slice(s) => s
             }
         }
@@ -182,7 +182,7 @@ pub fn load_image(image: &ImageXObject, resources: &Resources, resolve: &impl Re
                     }
                 }
             }
-            ColorSpace::Named(ref name) => resources.color_spaces.get(name),
+            ColorSpace::Named(name) => resources.color_spaces.get(name),
             _ => Some(cs),
         }
     }

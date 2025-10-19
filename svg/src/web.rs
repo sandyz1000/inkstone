@@ -1,15 +1,16 @@
 use crate::dom::Svg;
 use crate::draw::DrawContext;
-use crate::text::{Font, FontCollection};
+use crate::text::{ Font, FontCollection };
 use pathfinder_geometry::transform2d::Transform2F;
 use pathfinder_renderer::scene::Scene;
+use pdf_view::wasm::WasmBackend;
 use pdf_view::*;
 use std::sync::Arc;
 
 use js_sys::Uint8Array;
 use wasm_bindgen::prelude::*;
 
-use web_sys::{HtmlCanvasElement, WebGl2RenderingContext};
+use web_sys::{ HtmlCanvasElement, WebGl2RenderingContext };
 
 pub struct SvgView {
     svg: Svg,
@@ -18,18 +19,26 @@ pub struct SvgView {
 
 impl Interactive for SvgView {
     type Event = Vec<u8>;
+    type Backend = WasmBackend;
+
     fn title(&self) -> String {
         "SVG".into()
     }
-    fn scene(&mut self, ctx: &mut Context) -> Scene {
-        DrawContext::new(&self.svg, &self.fonts)
-            .compose_with_transform(Transform2F::from_scale(25.4 / 75.))
+    fn scene(&mut self, ctx: &mut Context<Self::Backend>) -> Scene {
+        DrawContext::new(&self.svg, &self.fonts).compose_with_transform(
+            Transform2F::from_scale(25.4 / 75.0)
+        )
     }
-    fn event(&mut self, ctx: &mut Context, event: Vec<u8>) {
+    fn event(&mut self, ctx: &mut Context<Self::Backend>, event: Vec<u8>) {
         match Svg::from_data(&event) {
-            Ok(svg) => self.svg = svg,
+            Ok(svg) => {
+                self.svg = svg;
+            }
             Err(e) => {}
         }
+    }
+    fn init(&mut self, _ctx: &mut Context<Self::Backend>, _sender: Emitter<Self::Event>) {
+        // No initialization needed for SvgView
     }
 }
 
@@ -59,7 +68,7 @@ impl FontBuilder {
 pub fn run() {
     std::panic::set_hook(Box::new(console_error_panic_hook::hook));
     console_log::init_with_level(log::Level::Info);
-    warn!("test");
+    log::warn!("test");
 }
 
 #[wasm_bindgen]
@@ -67,7 +76,7 @@ pub fn show(
     canvas: HtmlCanvasElement,
     context: WebGl2RenderingContext,
     data: &Uint8Array,
-    fonts: &Fonts,
+    fonts: &Fonts
 ) -> WasmView {
     use pathfinder_resources::embedded::EmbeddedResourceLoader;
 

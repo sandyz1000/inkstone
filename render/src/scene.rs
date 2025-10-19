@@ -1,4 +1,4 @@
-use pathfinder_color::{ColorF, ColorU};
+use pathfinder_color::{ ColorF, ColorU };
 use pathfinder_content::{
     fill::FillRule,
     stroke::OutlineStrokeToFill,
@@ -7,17 +7,14 @@ use pathfinder_content::{
     dash::OutlineDash,
 };
 use pathfinder_renderer::{
-    scene::{DrawPath, ClipPath, ClipPathId, Scene},
-    paint::{PaintId, Paint},
+    scene::{ DrawPath, ClipPath, ClipPathId, Scene },
+    paint::{ PaintId, Paint },
 };
-use pathfinder_geometry::{
-    vector::Vector2F,
-    rect::RectF, transform2d::Transform2F,
-};
-use pdf::object::{Ref, XObject, ImageXObject, Resolve, Resources, MaybeRef};
+use pathfinder_geometry::{ vector::Vector2F, rect::RectF, transform2d::Transform2F };
+use pdf::object::{ Ref, XObject, ImageXObject, Resolve, Resources, MaybeRef };
 use crate::backend;
 
-use super::{FontEntry, TextSpan, DrawMode, Backend, Fill, Cache};
+use super::{ FontEntry, TextSpan, DrawMode, Backend, Fill, Cache };
 use pdf::font::Font as PdfFont;
 use pdf::error::PdfError;
 use std::sync::Arc;
@@ -32,7 +29,7 @@ impl<'a> SceneBackend<'a> {
         let scene = Scene::new();
         SceneBackend {
             scene,
-            cache
+            cache,
         }
     }
     pub fn finish(self) -> Scene {
@@ -41,9 +38,7 @@ impl<'a> SceneBackend<'a> {
     fn paint(&mut self, fill: Fill, alpha: f32) -> PaintId {
         let paint = match fill {
             Fill::Solid(r, g, b) => Paint::from_color(ColorF::new(r, g, b, alpha).to_u8()),
-            Fill::Pattern(_) => {
-                Paint::black()
-            }
+            Fill::Pattern(_) => { Paint::black() }
         };
         self.scene.push_paint(&paint)
     }
@@ -51,10 +46,16 @@ impl<'a> SceneBackend<'a> {
 
 impl<'a> Backend for SceneBackend<'a> {
     type ClipPathId = ClipPathId;
-    fn create_clip_path(&mut self, path: Outline, fill_rule: FillRule, parent: Option<Self::ClipPathId>) -> Self::ClipPathId {
+    fn create_clip_path(
+        &mut self,
+        path: Outline,
+        fill_rule: FillRule,
+        parent: Option<Self::ClipPathId>
+    ) -> Self::ClipPathId {
+        // TODO: The parent clip path might need to be handled differently in the new API
+        // For now, we create a clip path without parent support
         let mut clip = ClipPath::new(path);
         clip.set_fill_rule(fill_rule);
-        clip.set_clip_path(parent);
         self.scene.push_clip_path(clip)
     }
     fn set_view_box(&mut self, view_box: RectF) {
@@ -62,13 +63,21 @@ impl<'a> Backend for SceneBackend<'a> {
 
         let white = self.scene.push_paint(&Paint::from_color(ColorU::white()));
         self.scene.push_draw_path(DrawPath::new(Outline::from_rect(view_box), white));
-
     }
-    fn draw(&mut self, outline: &Outline, mode: &DrawMode, fill_rule: FillRule, transform: Transform2F, clip: Option<ClipPathId>) {
+    fn draw(
+        &mut self,
+        outline: &Outline,
+        mode: &DrawMode,
+        fill_rule: FillRule,
+        transform: Transform2F,
+        clip: Option<ClipPathId>
+    ) {
         match mode {
-            DrawMode::Fill { fill } | DrawMode::FillStroke {fill, .. } => {
+            DrawMode::Fill { fill } | DrawMode::FillStroke { fill, .. } => {
                 let paint = self.paint(fill.color, fill.alpha);
-                let mut draw_path = DrawPath::new(outline.clone().transformed(&transform), paint);
+                let mut transformed_outline = outline.clone();
+                transformed_outline.transform(&transform);
+                let mut draw_path = DrawPath::new(transformed_outline, paint);
                 draw_path.set_clip_path(clip);
                 draw_path.set_fill_rule(fill_rule);
                 draw_path.set_blend_mode(blend_mode(fill.mode));
@@ -77,7 +86,8 @@ impl<'a> Backend for SceneBackend<'a> {
             _ => {}
         }
         match mode {
-            DrawMode::Stroke { stroke, stroke_mode }| DrawMode::FillStroke { stroke, stroke_mode, .. } => {
+            | DrawMode::Stroke { stroke, stroke_mode }
+            | DrawMode::FillStroke { stroke, stroke_mode, .. } => {
                 let paint = self.paint(stroke.color, stroke.alpha);
                 let contour = match stroke_mode.dash_pattern {
                     Some((ref pat, phase)) => {
@@ -92,24 +102,38 @@ impl<'a> Backend for SceneBackend<'a> {
                         stroke.into_outline()
                     }
                 };
-                let mut draw_path = DrawPath::new(contour.transformed(&transform), paint);
+                let mut transformed_contour = contour;
+                transformed_contour.transform(&transform);
+                let mut draw_path = DrawPath::new(transformed_contour, paint);
                 draw_path.set_clip_path(clip);
                 draw_path.set_fill_rule(fill_rule);
 
-            draw_path.set_blend_mode(blend_mode(stroke.mode));
+                draw_path.set_blend_mode(blend_mode(stroke.mode));
                 self.scene.push_draw_path(draw_path);
             }
             _ => {}
         }
     }
-    fn draw_image(&mut self, xobject_ref: Ref<XObject>, im: &ImageXObject, resources: &Resources, transform: Transform2F, mode: backend::BlendMode, clip: Option<ClipPathId>,  resolve: &impl Resolve) {
+    fn draw_image(
+        &mut self,
+        xobject_ref: Ref<XObject>,
+        im: &ImageXObject,
+        resources: &Resources,
+        transform: Transform2F,
+        mode: backend::BlendMode,
+        clip: Option<ClipPathId>,
+        resolve: &impl Resolve
+    ) {
         if let Ok(ref image) = *self.cache.get_image(xobject_ref, im, resources, resolve, mode).0 {
             let size = image.size();
             let size_f = size.to_f32();
-            let outline = Outline::from_rect(transform * RectF::new(Vector2F::default(), Vector2F::new(1.0, 1.0)));
-            let im_tr = transform
-                * Transform2F::from_scale(Vector2F::new(1.0 / size_f.x(), -1.0 / size_f.y()))
-                * Transform2F::from_translation(Vector2F::new(0.0, -size_f.y()));
+            let outline = Outline::from_rect(
+                transform * RectF::new(Vector2F::default(), Vector2F::new(1.0, 1.0))
+            );
+            let im_tr =
+                transform *
+                Transform2F::from_scale(Vector2F::new(1.0 / size_f.x(), -1.0 / size_f.y())) *
+                Transform2F::from_translation(Vector2F::new(0.0, -size_f.y()));
 
             let mut pattern = Pattern::from_image(image.clone());
             pattern.apply_transform(im_tr);
@@ -122,11 +146,21 @@ impl<'a> Backend for SceneBackend<'a> {
             self.scene.push_draw_path(draw_path);
         }
     }
-    fn draw_inline_image(&mut self, _im: &Arc<ImageXObject>, _resources: &Resources, _transform: Transform2F, mode: backend::BlendMode, clip: Option<ClipPathId>, _resolve: &impl Resolve) {
+    fn draw_inline_image(
+        &mut self,
+        _im: &Arc<ImageXObject>,
+        _resources: &Resources,
+        _transform: Transform2F,
+        mode: backend::BlendMode,
+        clip: Option<ClipPathId>,
+        _resolve: &impl Resolve
+    ) {}
 
-    }
-
-    fn get_font(&mut self, font_ref: &MaybeRef<PdfFont>, resolve: &impl Resolve) -> Result<Option<Arc<FontEntry>>, PdfError> {
+    fn get_font(
+        &mut self,
+        font_ref: &MaybeRef<PdfFont>,
+        resolve: &impl Resolve
+    ) -> Result<Option<Arc<FontEntry>>, PdfError> {
         self.cache.get_font(font_ref, resolve)
     }
     fn add_text(&mut self, span: TextSpan, clip: Option<Self::ClipPathId>) {}

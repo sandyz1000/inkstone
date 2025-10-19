@@ -1,6 +1,6 @@
 use glyphmatcher::FontDb;
 use std::borrow::Cow;
-use pdf::error::{PdfError, Result};
+use pdf::error::{ PdfError, Result };
 use pdf::font::Font as PdfFont;
 use pdf::object::*;
 use std::collections::HashMap;
@@ -8,9 +8,9 @@ use std::ops::Deref;
 use std::path::PathBuf;
 
 use super::FontEntry;
-use font::{self};
-use globalcache::{sync::SyncCache, ValueSize};
-use std::hash::{Hash, Hasher};
+use font::{ self };
+use globalcache::{ sync::SyncCache, ValueSize };
+use std::hash::{ Hash, Hasher };
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -57,12 +57,17 @@ pub struct StandardCache {
 }
 impl StandardCache {
     pub fn new() -> Self {
-        let standard_fonts = PathBuf::from(std::env::var_os("STANDARD_FONTS").expect("STANDARD_FONTS is not set. Please check https://github.com/pdf-rs/pdf_render/#fonts for instructions."));
-        let data = standard_fonts
-            .read_file("fonts.json")
-            .expect("can't read fonts.json");
-        let fonts: HashMap<String, String> =
-            serde_json::from_slice(&data).expect("fonts.json is invalid");
+        let standard_fonts = PathBuf::from(
+            std::env
+                ::var_os("STANDARD_FONTS")
+                .expect(
+                    "STANDARD_FONTS is not set. Please check https://github.com/pdf-rs/pdf_render/#fonts for instructions."
+                )
+        );
+        let data = standard_fonts.read_file("fonts.json").expect("can't read fonts.json");
+        let fonts: HashMap<String, String> = serde_json
+            ::from_slice(&data)
+            .expect("fonts.json is invalid");
 
         let dump = match std::env::var("DUMP_FONT").as_deref() {
             Err(_) => Dump::Never,
@@ -70,12 +75,12 @@ impl StandardCache {
             Ok("error") => Dump::OnError,
             Ok(_) => Dump::Never,
         };
-        let db_path = dir.join("db");
+        let db_path = standard_fonts.join("db");
         let font_db = db_path.is_dir().then(|| FontDb::new(db_path));
 
         StandardCache {
             inner: SyncCache::new(),
-            dir,
+            dir: standard_fonts,
             fonts,
             dump,
             font_db,
@@ -97,7 +102,7 @@ enum Dump {
 pub fn load_font(
     font_ref: &MaybeRef<PdfFont>,
     resolve: &impl Resolve,
-    cache: &StandardCache,
+    cache: &StandardCache
 ) -> Result<Option<FontEntry>> {
     let pdf_font = font_ref.clone();
     debug!("loading {:?}", pdf_font);
@@ -108,13 +113,13 @@ pub fn load_font(
             let font = font::parse(&data).map_err(|e| PdfError::Other {
                 msg: format!("Font Error: {:?}", e),
             });
-            if matches!(cache.dump, Dump::Always)
-                || (matches!(cache.dump, Dump::OnError) && font.is_err())
+            if
+                matches!(cache.dump, Dump::Always) ||
+                (matches!(cache.dump, Dump::OnError) && font.is_err())
             {
                 let name = format!(
                     "font_{}",
-                    pdf_font
-                        .name
+                    pdf_font.name
                         .as_ref()
                         .map(|s| s.as_str())
                         .unwrap_or("unnamed")
@@ -124,12 +129,16 @@ pub fn load_font(
             }
             FontRc::from(font?)
         }
-        Some(Err(e)) => return Err(e),
+        Some(Err(e)) => {
+            return Err(e);
+        }
         None => {
             debug!("no embedded font.");
             let name = match pdf_font.name {
                 Some(ref name) => name.as_str(),
-                None => return Ok(None),
+                None => {
+                    return Ok(None);
+                }
             };
             debug!("loading {name} instead");
             match cache.fonts.get(name).or_else(|| cache.fonts.get("Arial")) {
@@ -165,13 +174,7 @@ pub fn load_font(
         }
     };
 
-    Ok(Some(FontEntry::build(
-        font,
-        pdf_font,
-        None,
-        resolve,
-        cache.require_unique_unicode,
-    )?))
+    Ok(Some(FontEntry::build(font, pdf_font, None, resolve, cache.require_unique_unicode)?))
 }
 
 pub trait DirRead: Sized {
@@ -181,7 +184,8 @@ pub trait DirRead: Sized {
 
 impl DirRead for PathBuf {
     fn read_file(&self, name: &str) -> Result<Cow<'static, [u8]>> {
-        std::fs::read(self.join(name))
+        std::fs
+            ::read(self.join(name))
             .map_err(|e| e.into())
             .map(|d| d.into())
     }

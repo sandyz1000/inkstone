@@ -1,6 +1,6 @@
 use crate::dom::{TagG, TagUse};
 use std::sync::Arc;
-use crate::filter::apply_filter;
+use crate::draw::filter::apply_filter;
 
 impl DrawItem for TagG {
     fn bounds(&self, options: &BoundsOptions) -> Option<RectF> {
@@ -74,7 +74,7 @@ impl DrawItem for TagUse {
         let href = get_ref_or_return!(self.href, "<use> without href");
         let item = get_or_return!(options.ctx.resolve_href(href), "can't resolve <use href={:?}>", href);
         content_transform(&self, &mut options, item);
-        debug!("item: {:?}", *item);
+        log::debug!("item: {:?}", *item);
         match **item {
             Item::Symbol(TagSymbol { ref items, ref attrs, .. }) |
             Item::Svg(TagSvg { ref items, ref attrs, .. }) |

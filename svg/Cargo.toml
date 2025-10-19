@@ -30,11 +30,19 @@ pathfinder_content = { workspace = true }
 pathfinder_renderer = { workspace = true }
 pathfinder_color = { workspace = true }
 pathfinder_simd = { workspace = true }
-font = { path = "../font", features=["opentype"] }
+font = { path = "../font", features = ["opentype"] }
+pdf_view = { path = "../view" }
+rasterize = { path = "../rasterize" }
+
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+web-sys = { version = "0.3", features = [
+    "HtmlCanvasElement",
+    "WebGl2RenderingContext",
+] }
 
 [dev-dependencies]
 pathfinder_resources = { workspace = true }
-pdf_view = { path = "../view" }
-rasterize = { path = "../rasterize" }
 env_logger = { workspace = true }
 image = { workspace = true }

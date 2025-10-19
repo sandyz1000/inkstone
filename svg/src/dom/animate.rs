@@ -1,9 +1,9 @@
-use std::ops::{Add, Sub, Mul};
+use crate::dom::prelude::*;
+use std::ops::{ Add, Sub, Mul };
 use std::fmt::Debug;
 use pathfinder_content::outline::Contour;
-use crate::dom::parser::{number_list_4, one_or_two_numbers, one_or_three_numbers};
+use crate::dom::parser::{ number_list_4, one_or_two_numbers, one_or_three_numbers };
 use log::debug;
-
 
 #[derive(Debug, Clone)]
 pub struct Animate<T> {
@@ -21,7 +21,7 @@ impl<T> Animate<T> where T: Parse + Clone {
         let fill = parse_attr_or(node, "fill", AnimationFill::Remove)?;
         let default_additive = match mode {
             AnimationMode::Absolute { .. } | AnimationMode::Values { .. } => Additive::Replace,
-            AnimationMode::Relative { .. } => Additive::Sum
+            AnimationMode::Relative { .. } => Additive::Sum,
         };
         let additive = parse_attr_or(node, "additive", default_additive)?;
 
@@ -44,7 +44,7 @@ impl<T> Animate<T> where T: Parse + Clone + Default {
 pub struct Timing {
     pub begin: Time,
     pub scale: f32,
-   //repeat_until: Time,
+    //repeat_until: Time,
 }
 impl ParseNode for Timing {
     fn parse_node(node: &Node) -> Result<Timing, Error> {
@@ -59,13 +59,12 @@ pub struct AnimateMotion {
     pub timing: Timing,
 }
 
-
 #[derive(Debug, Copy, Clone)]
 pub enum CalcMode {
     Discrete,
     Linear,
     Paced,
-    Spline
+    Spline,
 }
 impl Parse for CalcMode {
     fn parse(s: &str) -> Result<Self, Error> {
@@ -74,7 +73,7 @@ impl Parse for CalcMode {
             "linear" => Ok(CalcMode::Linear),
             "paced" => Ok(CalcMode::Paced),
             "spline" => Ok(CalcMode::Spline),
-            _ => Err(Error::InvalidAttributeValue(s.into()))
+            _ => Err(Error::InvalidAttributeValue(s.into())),
         }
     }
 }
@@ -100,7 +99,7 @@ impl UnitSpline {
         let p0123 = lerp(p012, p123);
 
         p0123
-/*
+        /*
         p01 = t a
         p12 = u a + t b
         p23 = u b + t
@@ -120,7 +119,7 @@ impl UnitSpline {
         let mut high = 1.0;
         let mut f_high = self.at(high);
         let mut f_low = self.at(low);
-        for _ in 0 .. 5 {
+        for _ in 0..5 {
             let mid = (low + high) * 0.5;
             let p = self.at(mid);
             if x < p.x() {
@@ -172,11 +171,10 @@ impl Time {
 impl Parse for Time {
     fn parse(s: &str) -> Result<Time, Error> {
         assert!(s.ends_with("s"));
-        let seconds: f64 = s[.. s.len() - 1].parse().unwrap();
+        let seconds: f64 = s[..s.len() - 1].parse().unwrap();
         Ok(Time(seconds))
     }
 }
-
 
 #[derive(Clone, Debug, Default)]
 pub struct Translation(pub Vector2F);
@@ -198,7 +196,9 @@ impl Into<Transform2F> for Scale {
 pub struct Rotation(pub f32, pub Vector2F);
 impl Into<Transform2F> for Rotation {
     fn into(self) -> Transform2F {
-        Transform2F::from_translation(self.1) * Transform2F::from_rotation(self.0) * Transform2F::from_translation(-self.1)
+        Transform2F::from_translation(self.1) *
+            Transform2F::from_rotation(self.0) *
+            Transform2F::from_translation(-self.1)
     }
 }
 
@@ -270,7 +270,9 @@ impl TransformAnimate {
             "rotate" => TransformAnimate::Rotate(Animate::parse_animate_default(node)?),
             "skewX" => TransformAnimate::SkewX(Animate::parse_animate_default(node)?),
             "skewY" => TransformAnimate::SkewY(Animate::parse_animate_default(node)?),
-            val => return Err(Error::InvalidAttributeValue(val.into())),
+            val => {
+                return Err(Error::InvalidAttributeValue(val.into()));
+            }
         })
     }
 }
@@ -278,7 +280,7 @@ impl TransformAnimate {
 #[derive(Default, Clone, Debug)]
 pub struct Transform {
     pub value: Transform2F,
-    pub animations: Vec<TransformAnimate>
+    pub animations: Vec<TransformAnimate>,
 }
 impl Transform {
     pub fn new(value: Transform2F) -> Transform {
@@ -296,9 +298,17 @@ impl Parse for Transform {
 }
 #[derive(Debug, Clone)]
 pub enum AnimationMode<T> {
-    Absolute { from: T, to: T },
-    Relative { by: T },
-    Values { pairs: Vec<(f32, T)>, splines: Vec<UnitSpline> },
+    Absolute {
+        from: T,
+        to: T,
+    },
+    Relative {
+        by: T,
+    },
+    Values {
+        pairs: Vec<(f32, T)>,
+        splines: Vec<UnitSpline>,
+    },
 }
 impl<T> AnimationMode<T> where T: Parse + Clone {
     pub fn parse_node(node: &Node, value: &T, calc_mode: CalcMode) -> Result<Self, Error> {
@@ -306,8 +316,14 @@ impl<T> AnimationMode<T> where T: Parse + Clone {
         let to = node.attribute("to");
 
         if from.is_some() | to.is_some() {
-            let from = from.map(T::parse).transpose()?.unwrap_or_else(|| value.clone());
-            let to = to.map(T::parse).transpose()?.unwrap_or_else(|| value.clone());
+            let from = from
+                .map(T::parse)
+                .transpose()?
+                .unwrap_or_else(|| value.clone());
+            let to = to
+                .map(T::parse)
+                .transpose()?
+                .unwrap_or_else(|| value.clone());
             Ok(AnimationMode::Absolute { from, to })
         } else if let Some(by) = node.attribute("by") {
             let by = T::parse(by)?;
@@ -315,27 +331,26 @@ impl<T> AnimationMode<T> where T: Parse + Clone {
         } else if let Some(values) = node.attribute("values") {
             let values = values.split(";").map(str::trim);
             let key_times = get_attr(node, "keyTimes")?.split(";").map(str::trim);
-            
-            let pairs = key_times.zip(values)
-            .map(|(time, val)| {
-                Ok((
-                    f32::from_str(time)?,
-                    T::parse(val)?
-                ))
-            })
-            .collect::<Result<Vec<(f32, T)>, Error>>()?;
-            
+
+            let pairs = key_times
+                .zip(values)
+                .map(|(time, val)| { Ok((f32::from_str(time)?, T::parse(val)?)) })
+                .collect::<Result<Vec<(f32, T)>, Error>>()?;
+
             let mut splines = vec![];
             if let CalcMode::Spline = calc_mode {
-                splines = get_attr(node, "keySplines")?.split(";").map(|s| {
-                    let [x1, y1, x2, y2] = number_list_4(s.trim())?;
-                    Ok(UnitSpline(vec2f(x1, y1), vec2f(x2, y2)))
-                }).collect::<Result<Vec<UnitSpline>, Error>>()?;
+                splines = get_attr(node, "keySplines")?
+                    .split(";")
+                    .map(|s| {
+                        let [x1, y1, x2, y2] = number_list_4(s.trim())?;
+                        Ok(UnitSpline(vec2f(x1, y1), vec2f(x2, y2)))
+                    })
+                    .collect::<Result<Vec<UnitSpline>, Error>>()?;
                 if splines.len() + 1 != pairs.len() {
                     return Err(Error::InvalidAttributeValue("keySplines".into()));
                 }
             }
-            
+
             Ok(AnimationMode::Values { pairs, splines })
         } else {
             Err(Error::MissingAttribute("<animate> lacks from, to, by and values".into()))
@@ -346,14 +361,14 @@ impl<T> AnimationMode<T> where T: Parse + Clone {
 #[derive(Debug, Copy, Clone)]
 pub enum AnimationFill {
     Remove,
-    Freeze
+    Freeze,
 }
 impl Parse for AnimationFill {
     fn parse(s: &str) -> Result<Self, Error> {
         match s {
             "freeze" => Ok(AnimationFill::Freeze),
             "remove" => Ok(AnimationFill::Remove),
-            _ => Err(Error::InvalidAttributeValue(s.into()))
+            _ => Err(Error::InvalidAttributeValue(s.into())),
         }
     }
 }
@@ -361,14 +376,14 @@ impl Parse for AnimationFill {
 #[derive(Copy, Clone, Debug)]
 pub enum Additive {
     Sum,
-    Replace
+    Replace,
 }
 impl Parse for Additive {
     fn parse(s: &str) -> Result<Self, Error> {
         match s {
             "sum" => Ok(Additive::Sum),
             "replace" => Ok(Additive::Replace),
-            _ => Err(Error::InvalidAttributeValue(s.into()))
+            _ => Err(Error::InvalidAttributeValue(s.into())),
         }
     }
 }

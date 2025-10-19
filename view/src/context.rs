@@ -2,9 +2,9 @@ use std::rc::Rc;
 
 use pathfinder_geometry::rect::RectF;
 use pathfinder_geometry::transform2d::Transform2F;
-use pathfinder_geometry::vector::{Vector2F, Vector2I};
+use pathfinder_geometry::vector::{ Vector2F, Vector2I };
 
-use crate::config::{Config, Icon};
+use crate::config::{ Config, Icon };
 
 pub trait ViewBackend {
     fn resize(&mut self, size: Vector2F);
@@ -20,7 +20,7 @@ pub struct Context<B: ViewBackend> {
     pub scale: f32, // device independend
     pub view_center: Vector2F,
     pub window_size: Vector2F, // in pixels
-    pub scale_factor: f32,     // device dependend
+    pub scale_factor: f32, // device dependend
     pub config: Rc<Config>,
     pub bounds: Option<RectF>,
     pub close: bool,
@@ -78,7 +78,7 @@ impl<'a, B: ViewBackend> Context<B> {
     }
 
     pub fn zoom_by(&mut self, log2_factor: f32) {
-        self.scale *= 2f32.powf(log2_factor);
+        self.scale *= (2f32).powf(log2_factor);
         self.check_bounds();
         self.request_redraw();
     }
@@ -157,9 +157,9 @@ impl<'a, B: ViewBackend> Context<B> {
     }
 
     pub fn view_transform(&self) -> Transform2F {
-        Transform2F::from_translation(self.window_size * 0.5)
-            * Transform2F::from_scale(self.scale)
-            * Transform2F::from_translation(-self.view_center)
+        Transform2F::from_translation(self.window_size * 0.5) *
+            Transform2F::from_scale(self.scale) *
+            Transform2F::from_translation(-self.view_center)
     }
 
     pub fn set_view_box(&mut self, view_box: RectF) {
@@ -175,9 +175,9 @@ impl<'a, B: ViewBackend> Context<B> {
     }
 
     fn sanity_check(&mut self) {
-        let max_window_size = Vector2F::new(500., 500.);
-        let s = self.window_size.recip() * max_window_size;
-        self.scale *= 1f32.min(s.x()).min(s.y());
+        let max_window_size = Vector2F::new(500.0, 500.0);
+        let s = (Vector2F::splat(1.0) / self.window_size) * max_window_size;
+        self.scale *= (1f32).min(s.x()).min(s.y());
         self.window_size *= s;
     }
 

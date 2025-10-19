@@ -1,0 +1,70 @@
+[package]
+name = "inkstone-web"
+version = "0.1.0"
+edition = "2024"
+authors = ["Sandip Dey <sandip.dey1988@yahoo.com>"]
+description = "Inkstone PDF Viewer - Web Application with Dioxus"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# Dioxus Framework
+dioxus = { version = "0.6", features = ["web"] }
+dioxus-web = "0.6"
+dioxus-logger = "0.6.2"
+
+# PDF and Rendering
+pdf_view = { path = "../view" }
+pdf_render = { path = "../render" }
+pdf = { workspace = true, default-features = false, features = ["dump"] }
+pathfinder_renderer = { workspace = true }
+pathfinder_geometry = { workspace = true }
+pathfinder_color = { workspace = true }
+pathfinder_resources = { workspace = true }
+pathfinder_content = { workspace = true }
+pathfinder_webgl = { workspace = true }
+globalcache = { workspace = true }
+
+# WASM and Web APIs
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+web-sys = { version = "0.3", features = [
+    "Window",
+    "Document",
+    "Element",
+    "HtmlElement",
+    "HtmlCanvasElement",
+    "WebGl2RenderingContext",
+    "WebGlRenderingContext",
+    "CanvasRenderingContext2d",
+    "MouseEvent",
+    "KeyboardEvent",
+    "WheelEvent",
+    "UiEvent",
+    "Event",
+    "EventTarget",
+    "Storage",
+    "console",
+] }
+
+# Utilities
+log = { workspace = true }
+console_log = "1.0"
+console_error_panic_hook = "0.1"
+getrandom = { version = "0.2", features = ["js"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+futures = "0.3"
+
+# UI and Styling
+include_dir = "0.7"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+
+[profile.dev]
+opt-level = 1

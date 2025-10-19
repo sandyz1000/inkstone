@@ -1,5 +1,5 @@
-use crate::prelude::*;
-use crate::parser::{parse_color, parse_paint};
+use crate::dom::prelude::*;
+use crate::dom::parser::{parse_color, parse_paint};
 use pathfinder_color::{ColorF, ColorU};
 
 #[derive(Debug, Clone, PartialEq)]

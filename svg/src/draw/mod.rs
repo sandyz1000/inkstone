@@ -1,23 +1,28 @@
-use pathfinder_renderer::scene::Scene;
+pub use pathfinder_renderer::scene::Scene;
 
 #[macro_use]
 mod macros;
 
-mod prelude {
+pub mod prelude {
     pub use pathfinder_renderer::scene::Scene;
     pub use pathfinder_geometry::{
-        vector::{Vector2F, vec2f},
+        vector::{ Vector2F, vec2f },
         transform2d::Transform2F,
         rect::RectF,
     };
     pub use pathfinder_content::outline::Outline;
-    pub use svg_dom::prelude::*;
-    pub use crate::{
-        DrawItem, Resolve, Interpolate, Compose, Shape,
-        draw::{Options, DrawContext, BoundsOptions, DrawOptions},
+    pub use crate::dom::prelude::*;
+    pub use crate::draw::{
+        DrawItem,
+        Resolve,
+        Interpolate,
+        Compose,
+        Shape,
+        draw::{ Options, DrawContext, BoundsOptions, DrawOptions },
     };
-    pub use svgtypes::{Length, LengthUnit};
+    pub use svgtypes::{ Length, LengthUnit };
 }
+use crate::types::SvgGlyph;
 
 mod path;
 mod rect;
@@ -38,7 +43,7 @@ mod paint;
 pub use prelude::*;
 
 // #[cfg(feature="text")]
-use svg_text::FontCollection;
+use crate::text::FontCollection;
 
 use std::sync::Arc;
 
@@ -67,7 +72,7 @@ impl<T> Interpolate for Option<T> where T: Interpolate {
     fn lerp(self, to: Self, x: f32) -> Self {
         match (self, to) {
             (Some(a), Some(b)) => Some(a.lerp(b, x)),
-            _ => None
+            _ => None,
         }
     }
     fn scale(self, x: f32) -> Self {
@@ -76,13 +81,12 @@ impl<T> Interpolate for Option<T> where T: Interpolate {
 }
 
 // #[cfg(not(feature="text"))]
-impl DrawItem for TagText {
-    fn draw_to(&self, scene: &mut Scene, options: &DrawOptions) {
-    }
-    fn bounds(&self, options: &BoundsOptions) -> Option<RectF> {
-        None
-    }
-}
+// impl DrawItem for TagText {
+//     fn draw_to(&self, scene: &mut Scene, options: &DrawOptions) {}
+//     fn bounds(&self, options: &BoundsOptions) -> Option<RectF> {
+//         None
+//     }
+// }
 
 pub trait Compose {
     fn compose(self, rhs: Self) -> Self;
@@ -91,13 +95,13 @@ impl<T: Compose> Compose for Option<T> {
     fn compose(self, rhs: Self) -> Self {
         match (self, rhs) {
             (Some(a), Some(b)) => Some(a.compose(b)),
-            (a, b) => a.or(b)
+            (a, b) => a.or(b),
         }
     }
 }
 
 macro_rules! draw_items {
-    ($name:ident { $($variant:ident($data:ty), )* }) => {
+    ($name:ident { $($variant:ident($data:ty),)* }) => {
         impl DrawItem for $name {
             fn draw_to(&self, scene: &mut Scene, options: &DrawOptions) {
                 match *self {
@@ -112,7 +116,7 @@ macro_rules! draw_items {
                 }
             }
         }
-    }
+    };
 }
 
 draw_items!(
@@ -131,8 +135,6 @@ draw_items!(
     }
 );
 
-
-use font::SvgGlyph;
 pub fn draw_glyph(glyph: &SvgGlyph, scene: &mut Scene, transform: Transform2F) {
     let ctx = DrawContext::new_without_fonts(&*glyph.svg);
     let mut options = DrawOptions::new(&ctx);

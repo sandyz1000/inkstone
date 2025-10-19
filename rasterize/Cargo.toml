@@ -13,7 +13,6 @@ pathfinder_canvas = { workspace = true }
 pathfinder_renderer = { workspace = true }
 pathfinder_resources = { workspace = true }
 font = { path = "../font" }
-gl = "*"
+gl = "0.14.0"
 image = { workspace = true }
-khronos-egl = { version = "*", features = ["static"] }
-
+khronos-egl = { version = "6.0.0", features = ["static"] }

@@ -27,22 +27,26 @@ structopt = "0.3"
 pdf_render = { path = "../render" }
 font = { path = "../font" }
 pdf_encoding = { path = "../encoding" }
-# pdf_encoding = "0.1"
 itertools = { workspace = true }
 image = { workspace = true }
 
 wasm-bindgen = "0.2.48"
 js-sys = "0.3"
 web-sys = { version = "*", features = [
+    "Event",
+    "KeyboardEvent",
+    "MouseEvent",
+    "WheelEvent",
     "HtmlCanvasElement",
+    "CssStyleDeclaration",
     "WebGl2RenderingContext",
 ] }
 console_log = "1.0.0"
 console_error_panic_hook = "0.1.6"
-getrandom = { version = "0.2.3", features = ["js"] }
+getrandom = { version = "0.3.2" }
 
 [dev-dependencies]
-criterion = "0.5.1"
+criterion = "0.7.0"
 
 [target.'cfg(unix)'.dependencies]
 env_logger = { workspace = true }

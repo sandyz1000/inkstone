@@ -1,16 +1,21 @@
 #![allow(unused)]
 use itertools::Itertools;
 use pathfinder_geometry::vector::Vector2F;
-use pathfinder_content::outline::Contour;
+use pathfinder_content::outline::{ Contour, ContourIterFlags };
 
-use crate::{max, min};
+use crate::{ max, min };
 
 fn euclidean_distance(a: Vector2F, b: Vector2F) -> f32 {
     (a - b).length()
 }
 
 fn curve_length(contour: &Contour) -> f32 {
-    contour.points().iter().cloned().tuple_windows().map(|(a, b)| euclidean_distance(a, b)).sum()
+    contour
+        .iter(ContourIterFlags::empty())
+        .flat_map(|segment| vec![segment.baseline.from(), segment.baseline.to()])
+        .tuple_windows()
+        .map(|(a, b)| euclidean_distance(a, b))
+        .sum()
 }
 
 fn extend_point_on_line(a: Vector2F, b: Vector2F, dist: f32) -> Vector2F {
@@ -18,10 +23,14 @@ fn extend_point_on_line(a: Vector2F, b: Vector2F, dist: f32) -> Vector2F {
     b + (a - b) * norm
 }
 
-fn calc_value(i: usize, j: usize, prev_results_col: &[f32], current_results_col: &[f32], long_curve: &Contour, short_curve: &Contour) -> f32 {
-    let long_curve = long_curve.points();
-    let short_curve = short_curve.points();
-
+fn calc_value(
+    i: usize,
+    j: usize,
+    prev_results_col: &[f32],
+    current_results_col: &[f32],
+    long_curve: &[Vector2F],
+    short_curve: &[Vector2F]
+) -> f32 {
     if i == 0 && j == 0 {
         return euclidean_distance(long_curve[0], short_curve[0]);
     }
@@ -39,29 +48,38 @@ fn calc_value(i: usize, j: usize, prev_results_col: &[f32], current_results_col:
 }
 
 pub fn frechet_distance(curve1: &Contour, curve2: &Contour) -> f32 {
-    let longcalcurve;
-    let shortcalcurve;
-    if curve1.points().len() > curve2.points().len() {
-        longcalcurve = curve1;
-        shortcalcurve = curve2
+    // Extract points from contours
+    let points1: Vec<Vector2F> = curve1
+        .iter(ContourIterFlags::empty())
+        .flat_map(|segment| vec![segment.baseline.from(), segment.baseline.to()])
+        .collect();
+    let points2: Vec<Vector2F> = curve2
+        .iter(ContourIterFlags::empty())
+        .flat_map(|segment| vec![segment.baseline.from(), segment.baseline.to()])
+        .collect();
+
+    let (longcalcurve, shortcalcurve) = if points1.len() > points2.len() {
+        (&points1[..], &points2[..])
     } else {
-        shortcalcurve = curve1;
-        longcalcurve = curve2;
-    }
+        (&points2[..], &points1[..])
+    };
 
     let mut prev_resultscalcol = vec![];
-    for i in 0 .. longcalcurve.points().len() as usize {
+    for i in 0..longcalcurve.len() {
         let mut current_resultscalcol = vec![];
-        for j in 0 .. shortcalcurve.points().len() as usize {
+        for j in 0..shortcalcurve.len() {
             current_resultscalcol.push(
                 calc_value(
-                    i, j, &prev_resultscalcol, 
-                    &current_resultscalcol, 
-                    longcalcurve, shortcalcurve
+                    i,
+                    j,
+                    &prev_resultscalcol,
+                    &current_resultscalcol,
+                    longcalcurve,
+                    shortcalcurve
                 )
             );
         }
         prev_resultscalcol = current_resultscalcol;
     }
-    prev_resultscalcol[shortcalcurve.points().len() as usize - 1]
+    prev_resultscalcol[shortcalcurve.len() - 1]
 }

@@ -1,26 +1,27 @@
 use crate::prelude::*;
+use log::{ debug, info, warn };
 use pathfinder_content::{
     outline::Outline,
-    stroke::{OutlineStrokeToFill, StrokeStyle, LineCap, LineJoin},
+    stroke::{ OutlineStrokeToFill, StrokeStyle, LineCap, LineJoin },
     fill::FillRule,
     dash::OutlineDash,
 };
 use pathfinder_renderer::{
-    scene::{Scene, DrawPath, ClipPath, ClipPathId},
+    scene::{ Scene, DrawPath, ClipPath, ClipPathId },
     paint::Paint as PaPaint,
 };
 use pathfinder_color::ColorU;
 use svgtypes::Length;
 use std::sync::Arc;
-use crate::gradient::BuildGradient;
-#[cfg(feature="text")]
-use crate::text::{FontCache};
+use crate::draw::gradient::BuildGradient;
+#[cfg(feature = "text")]
+use crate::text::{ FontCache };
 use isolang::Language;
-#[cfg(feature="text")]
-use svg_text::FontCollection;
+#[cfg(feature = "text")]
+use crate::text::FontCollection;
 use std::rc::Rc;
 use std::borrow::Cow;
-use std::ops::{Deref, DerefMut};
+use std::ops::{ Deref, DerefMut };
 
 #[derive(Clone, Debug)]
 pub struct DrawContext<'a> {
@@ -28,7 +29,7 @@ pub struct DrawContext<'a> {
 
     pub dpi: f32,
 
-    #[cfg(feature="text")]
+    #[cfg(feature = "text")]
     pub font_cache: Option<FontCache<'a>>,
 }
 impl<'a> DrawContext<'a> {
@@ -37,12 +38,12 @@ impl<'a> DrawContext<'a> {
             svg,
             dpi: 75.0,
 
-            #[cfg(feature="text")]
-            font_cache: None
+            #[cfg(feature = "text")]
+            font_cache: None,
         }
     }
 
-    #[cfg(feature="text")]
+    #[cfg(feature = "text")]
     pub fn new(svg: &'a Svg, fallback_fonts: &'a FontCollection) -> Self {
         DrawContext {
             svg,
@@ -55,11 +56,7 @@ impl<'a> DrawContext<'a> {
         self.svg.named_items.get(id)
     }
     pub fn resolve_href(&self, href: &str) -> Option<&Arc<Item>> {
-        if href.starts_with("#") {
-            self.resolve(&href[1..])
-        } else {
-            None
-        }
+        if href.starts_with("#") { self.resolve(&href[1..]) } else { None }
     }
     pub fn compose(&'a self) -> Scene {
         self.compose_with_transform(Transform2F::default())
@@ -74,7 +71,7 @@ impl<'a> DrawContext<'a> {
 
     pub fn compose_with_options(&'a self, options: &DrawOptions) -> Scene {
         let mut scene = Scene::new();
-        
+
         if let Some(vb) = self.view_box() {
             scene.set_view_box(options.transform * vb);
         }
@@ -99,12 +96,14 @@ impl<'a> DrawContext<'a> {
     /// get the viewbox (computed if missing)
     pub fn view_box(&'a self) -> Option<RectF> {
         let options = BoundsOptions::new(self);
-        
+
         if let Item::Svg(TagSvg { view_box: Some(r), width, height, .. }) = &*self.svg.root {
-            if let Some(size) = Vector(
-                width.unwrap_or(r.width),
-                height.unwrap_or(r.height)
-            ).try_resolve(&options) {
+            if
+                let Some(size) = Vector(
+                    width.unwrap_or(r.width),
+                    height.unwrap_or(r.height)
+                ).try_resolve(&options)
+            {
                 return Some(RectF::new(Vector2F::zero(), size));
             }
         }
@@ -158,24 +157,20 @@ impl<'a> Options<'a> {
             },
             stroke_dasharray: None,
             stroke_dashoffset: 0.0,
-            transform: Transform2F::from_scale(10.),
+            transform: Transform2F::from_scale(10.0),
             clip_rule: FillRule::EvenOdd,
             view_box: None,
             time: Time::start(),
-            font_size: 20.,
+            font_size: 20.0,
             direction: TextFlow::LeftToRight,
             lang: None,
         }
     }
     pub fn has_stroke(&self) -> bool {
-        self.opacity > 0.0 &&
-        self.stroke_opacity > 0. &&
-        !matches!(self.stroke, Paint::None)
+        self.opacity > 0.0 && self.stroke_opacity > 0.0 && !matches!(self.stroke, Paint::None)
     }
     pub fn has_fill(&self) -> bool {
-        self.opacity > 0.0 &&
-        self.fill_opacity > 0. &&
-        !matches!(self.fill, Paint::None)
+        self.opacity > 0.0 && self.fill_opacity > 0.0 && !matches!(self.fill, Paint::None)
     }
     pub fn get_transform(&self) -> &Transform2F {
         &self.transform
@@ -205,22 +200,25 @@ impl<'a> Options<'a> {
             direction: attrs.direction.unwrap_or(self.direction),
             font_size: attrs.font_size.resolve(self).unwrap_or(self.font_size),
             lang: attrs.lang.or(self.lang),
-            .. *self
+            ..*self
         }
     }
     fn resolve_paint(&self, paint: &Paint, opacity: f32) -> Option<PaPaint> {
         let opacity = opacity * self.opacity;
         match *paint {
             Paint::Color(ref c) => Some(PaPaint::from_color(c.color_u(opacity))),
-            Paint::Ref(ref id) => match self.ctx.svg.named_items.get(id).map(|arc| &**arc) {
-                Some(Item::LinearGradient(ref gradient)) => Some(PaPaint::from_gradient(gradient.build(self, opacity))),
-                Some(Item::RadialGradient(ref gradient)) => Some(PaPaint::from_gradient(gradient.build(self, opacity))),
-                r => {
-                    dbg!(id, r);
-                    None
+            Paint::Ref(ref id) =>
+                match self.ctx.svg.named_items.get(id).map(|arc| &**arc) {
+                    Some(Item::LinearGradient(ref gradient)) =>
+                        Some(PaPaint::from_gradient(gradient.build(self, opacity))),
+                    Some(Item::RadialGradient(ref gradient)) =>
+                        Some(PaPaint::from_gradient(gradient.build(self, opacity))),
+                    r => {
+                        dbg!(id, r);
+                        None
+                    }
                 }
-            }
-            _ => None
+            _ => None,
         }
     }
     pub fn resolve_length(&self, length: Length) -> Option<f32> {
@@ -232,11 +230,13 @@ impl<'a> Options<'a> {
             LengthUnit::In => self.ctx.dpi,
             LengthUnit::Mm => self.ctx.dpi * (1.0 / 25.4),
             LengthUnit::Pc => unimplemented!(),
-            LengthUnit::Percent => return None,
-            LengthUnit::Pt => self.ctx.dpi * (1.0 / 75.),
-            LengthUnit::Px => 1.0
+            LengthUnit::Percent => {
+                return None;
+            }
+            LengthUnit::Pt => self.ctx.dpi * (1.0 / 75.0),
+            LengthUnit::Px => 1.0,
         };
-        Some(length.num as f32 * scale)
+        Some((length.num as f32) * scale)
     }
     pub fn resolve_length_along(&self, length: Length, axis: Axis) -> Option<f32> {
         let scale = match length.unit {
@@ -247,22 +247,32 @@ impl<'a> Options<'a> {
             LengthUnit::In => self.ctx.dpi,
             LengthUnit::Mm => self.ctx.dpi * (1.0 / 25.4),
             LengthUnit::Pc => unimplemented!(),
-            LengthUnit::Percent => return match axis {
-                Axis::X => self.view_box.map(|r| r.width() * 0.01),
-                Axis::Y => self.view_box.map(|r| r.height() * 0.01),
-            },
-            LengthUnit::Pt => self.ctx.dpi * (1.0 / 75.),
-            LengthUnit::Px => 1.0
+            LengthUnit::Percent => {
+                return match axis {
+                    Axis::X => self.view_box.map(|r| r.width() * 0.01),
+                    Axis::Y => self.view_box.map(|r| r.height() * 0.01),
+                };
+            }
+            LengthUnit::Pt => self.ctx.dpi * (1.0 / 75.0),
+            LengthUnit::Px => 1.0,
         };
-        Some(length.num as f32 * scale)
+        Some((length.num as f32) * scale)
     }
-    pub fn apply_viewbox(&mut self, width: Option<LengthX>, height: Option<LengthY>, view_box: &Rect) {
+    pub fn apply_viewbox(
+        &mut self,
+        width: Option<LengthX>,
+        height: Option<LengthY>,
+        view_box: &Rect
+    ) {
         let view_box = view_box.resolve(self);
         let width = width.and_then(|l| l.try_resolve(self)).unwrap_or(view_box.width());
         let height = height.and_then(|l| l.try_resolve(self)).unwrap_or(view_box.height());
         let size = vec2f(width, height);
-        
-        self.apply_transform(Transform2F::from_scale(view_box.size().recip() * size) * Transform2F::from_translation(-view_box.origin()));
+
+        self.apply_transform(
+            Transform2F::from_scale(view_box.size().recip() * size) *
+                Transform2F::from_translation(-view_box.origin())
+        );
         self.view_box = Some(view_box);
     }
 }
@@ -279,7 +289,7 @@ impl<'a> Deref for DrawOptions<'a> {
     }
 }
 impl<'a> DerefMut for DrawOptions<'a> {
-    fn deref_mut (&mut self) -> &mut Options<'a> {
+    fn deref_mut(&mut self) -> &mut Options<'a> {
         &mut self.common
     }
 }
@@ -296,7 +306,7 @@ impl<'a> Deref for BoundsOptions<'a> {
     }
 }
 impl<'a> DerefMut for BoundsOptions<'a> {
-    fn deref_mut (&mut self) -> &mut Options<'a> {
+    fn deref_mut(&mut self) -> &mut Options<'a> {
         &mut self.common
     }
 }
@@ -304,7 +314,7 @@ impl<'a> BoundsOptions<'a> {
     pub fn new(ctx: &'a DrawContext<'a>) -> BoundsOptions<'a> {
         BoundsOptions {
             common: Options::new(ctx),
-            clip_rect: None
+            clip_rect: None,
         }
     }
     pub fn apply(&self, attrs: &Attrs) -> BoundsOptions<'a> {
@@ -347,7 +357,7 @@ impl<'a> DrawOptions<'a> {
     pub fn new(ctx: &'a DrawContext<'a>) -> DrawOptions<'a> {
         DrawOptions {
             common: Options::new(ctx),
-            clip_path: None
+            clip_path: None,
         }
     }
     pub fn debug_outline(&self, scene: &mut Scene, path: &Outline, color: ColorU) {
@@ -370,7 +380,7 @@ impl<'a> DrawOptions<'a> {
             scene.push_draw_path(draw_path);
         }
         if let Some(ref stroke) = self.resolve_paint(&self.stroke, self.stroke_opacity) {
-            if self.stroke_style.line_width > 0. {
+            if self.stroke_style.line_width > 0.0 {
                 let paint_id = scene.push_paint(stroke);
 
                 let mut outline = Cow::Borrowed(path);
@@ -432,13 +442,13 @@ impl<'a> DrawOptions<'a> {
 
         debug!("fill {:?} + {:?} -> {:?}", self.fill, attrs.fill, common.fill);
         debug!("stroke {:?} + {:?} -> {:?}", self.stroke, attrs.stroke, common.stroke);
-        
+
         DrawOptions { common, clip_path }
     }
     pub fn bounds_options(&self) -> BoundsOptions<'a> {
         BoundsOptions {
             common: self.common.clone(),
-            clip_rect: self.clip_path.map(|(rect, _)| rect)
+            clip_rect: self.clip_path.map(|(rect, _)| rect),
         }
     }
 }

@@ -35,7 +35,7 @@ pub struct TraceCache {
 }
 fn font_key(font_ref: &MaybeRef<PdfFont>) -> u64 {
     match font_ref {
-        MaybeRef::Direct(ref shared) => shared.as_ref() as *const PdfFont as _,
+        MaybeRef::Direct(shared) => shared.as_ref() as *const PdfFont as _,
         MaybeRef::Indirect(re) => re.get_ref().get_inner().id as _,
     }
 }
