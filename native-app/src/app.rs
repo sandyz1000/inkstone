@@ -1,14 +1,10 @@
 use gpui::*;
-use std::path::PathBuf;
-use std::rc::Rc;
 use pathfinder_geometry::vector::Vector2F;
-use pathfinder_geometry::transform2d::Transform2F;
-use pathfinder_renderer::scene::Scene;
-use pathfinder_resources::embedded::EmbeddedResourceLoader;
+use std::path::PathBuf;
+use std::sync::Arc;
+use rfd::FileDialog;
 
 use crate::renderer::PdfRenderer;
-use crate::backend::GpuiBackend;
-use viewer::{ Context as ViewerContext, Config, Interactive, Emitter };
 
 /// Custom events for the PDF viewer
 #[derive(Debug, Clone)]
@@ -22,40 +18,37 @@ pub enum ViewerEvent {
 unsafe impl Send for ViewerEvent {}
 
 /// Main PDF Viewer Application State
-/// Integrates viewer::Context with GPUI for PDF rendering
 pub struct PdfViewerApp {
     /// Currently loaded PDF file path
     current_file: Option<PathBuf>,
     /// PDF renderer instance
     pdf_renderer: Option<PdfRenderer>,
-    /// Viewer context managing navigation and zoom
-    viewer_context: ViewerContext<GpuiBackend>,
+    /// Current page number (0-indexed)
+    current_page: usize,
+    /// Total number of pages
+    num_pages: usize,
+    /// Current zoom level (1.0 = 100%)
+    zoom_level: f32,
     /// Error message if any
     error_message: Option<String>,
-    /// Event emitter for viewer events
-    emitter: Option<Emitter<ViewerEvent>>,
+    /// Focus handle for keyboard events
+    focus_handle: FocusHandle,
+    /// Cached rendered page image path
+    current_page_image: Option<Arc<std::path::Path>>,
 }
 
 impl PdfViewerApp {
     /// Create a new PDF Viewer application
-    pub fn new(_cx: &mut Context<Self>) -> Self {
-        let backend = GpuiBackend::new();
-
-        // Create config with embedded resource loader
-        let resource_loader = Box::new(EmbeddedResourceLoader::new());
-        let config = Rc::new(Config::new(resource_loader));
-
-        let mut viewer_context = ViewerContext::new(config, backend);
-
-        // Set initial window size
-        viewer_context.window_size = Vector2F::new(800.0, 600.0);
-
+    pub fn new(cx: &mut Context<Self>) -> Self {
         Self {
             current_file: None,
             pdf_renderer: None,
-            viewer_context,
+            current_page: 0,
+            num_pages: 0,
+            zoom_level: 1.0,
             error_message: None,
-            emitter: None,
+            focus_handle: cx.focus_handle(),
+            current_page_image: None,
         }
     }
 
@@ -64,73 +57,121 @@ impl PdfViewerApp {
         match PdfRenderer::new(&path) {
             Ok(renderer) => {
                 let num_pages = renderer.num_pages();
+                
                 self.current_file = Some(path);
                 self.pdf_renderer = Some(renderer);
                 self.error_message = None;
-
-                // Update viewer context with the number of pages
-                self.viewer_context.num_pages = num_pages;
-                self.viewer_context.goto_page(0);
+                self.current_page = 0;
+                self.num_pages = num_pages;
+                self.current_page_image = None; // Don't render yet
+                
+                // Trigger async rendering
+                self.render_current_page(cx);
 
                 cx.notify();
             }
             Err(e) => {
                 self.error_message = Some(format!("Failed to load PDF: {}", e));
                 self.pdf_renderer = None;
+                self.current_page_image = None;
                 cx.notify();
+            }
+        }
+    }
+    
+    /// Render the current page asynchronously
+    fn render_current_page(&mut self, cx: &mut Context<Self>) {
+        if let Some(renderer) = &mut self.pdf_renderer {
+            log::info!("Rendering page {} to image...", self.current_page);
+            
+            // Render directly (CGL context will be created on this thread)
+            match renderer.render_page_to_image(self.current_page, 150.0) {
+                Ok(image) => {
+                    // Save to temp directory
+                    let temp_path = std::env::temp_dir().join(format!("inkstone_page_{}.png", self.current_page));
+                    match image.save(&temp_path) {
+                        Ok(_) => {
+                            log::info!("✓ Successfully rendered page {} to: {:?}", self.current_page, temp_path);
+                            self.current_page_image = Some(temp_path.into());
+                            cx.notify();
+                        }
+                        Err(e) => {
+                            log::warn!("Failed to save rendered page: {}", e);
+                            self.error_message = Some(format!("Failed to save page: {}", e));
+                            cx.notify();
+                        }
+                    }
+                }
+                Err(e) => {
+                    log::warn!("Failed to render page to image: {}", e);
+                    self.error_message = Some(format!("Failed to render page: {}", e));
+                    cx.notify();
+                }
             }
         }
     }
 
     /// Navigate to next page
     pub fn next_page(&mut self, cx: &mut Context<Self>) {
-        self.viewer_context.next_page();
-        cx.notify();
+        if self.current_page + 1 < self.num_pages {
+            self.current_page += 1;
+            self.current_page_image = None; // Clear old image
+            self.render_current_page(cx);
+            cx.notify();
+        }
     }
 
     /// Navigate to previous page
     pub fn prev_page(&mut self, cx: &mut Context<Self>) {
-        self.viewer_context.prev_page();
-        cx.notify();
+        if self.current_page > 0 {
+            self.current_page -= 1;
+            self.current_page_image = None; // Clear old image
+            self.render_current_page(cx);
+            cx.notify();
+        }
     }
 
     /// Go to specific page (0-indexed)
     pub fn goto_page(&mut self, page: usize, cx: &mut Context<Self>) {
-        self.viewer_context.goto_page(page);
-        cx.notify();
+        if page < self.num_pages && page != self.current_page {
+            self.current_page = page;
+            self.current_page_image = None; // Clear old image
+            self.render_current_page(cx);
+            cx.notify();
+        }
     }
 
     /// Zoom in
     pub fn zoom_in(&mut self, cx: &mut Context<Self>) {
-        self.viewer_context.zoom_by(1.2);
+        self.zoom_level *= 1.2;
         cx.notify();
     }
 
     /// Zoom out
     pub fn zoom_out(&mut self, cx: &mut Context<Self>) {
-        self.viewer_context.zoom_by(1.0 / 1.2);
+        self.zoom_level /= 1.2;
         cx.notify();
     }
 
     /// Reset zoom to 100%
     pub fn reset_zoom(&mut self, cx: &mut Context<Self>) {
-        self.viewer_context.set_zoom(1.0);
+        self.zoom_level = 1.0;
         cx.notify();
     }
 
     /// Get current page number (1-indexed for display)
     pub fn current_page_display(&self) -> usize {
-        self.viewer_context.page_nr() + 1
+        self.current_page + 1
     }
 
     /// Get total pages
     pub fn total_pages(&self) -> usize {
-        self.viewer_context.num_pages
+        self.num_pages
     }
 
     /// Get current zoom level
     pub fn zoom_level(&self) -> f32 {
-        self.viewer_context.scale
+        self.zoom_level
     }
 
     /// Check if a PDF is loaded
@@ -147,14 +188,29 @@ impl PdfViewerApp {
             .map(|s| s.to_string())
     }
 
-    /// Update window size in viewer context
-    pub fn update_window_size(&mut self, width: f32, height: f32) {
-        self.viewer_context.window_size = Vector2F::new(width, height);
+    /// Open file dialog and load selected PDF
+    pub fn open_file_dialog(&mut self, cx: &mut Context<Self>) {
+        log::info!("Opening file dialog...");
+        match FileDialog::new()
+            .add_filter("PDF Files", &["pdf"])
+            .set_title("Open PDF File")
+            .pick_file()
+        {
+            Some(file) => {
+                log::info!("File selected: {:?}", file);
+                self.load_pdf(file, cx);
+            }
+            None => {
+                log::info!("No file selected");
+            }
+        }
     }
 }
 
 impl Render for PdfViewerApp {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let focus_handle = self.focus_handle.clone();
+        
         div()
             .flex()
             .flex_col()
@@ -162,15 +218,43 @@ impl Render for PdfViewerApp {
             .h_full()
             .bg(rgb(0x1e1e1e))
             .text_color(rgb(0xcccccc))
+            .track_focus(&focus_handle)
+            .on_key_down(cx.listener(|this, event: &KeyDownEvent, _window, cx| {
+                // Handle keyboard shortcuts
+                log::info!("Key pressed: {:?}, modifiers: {:?}", event.keystroke.key, event.keystroke.modifiers);
+                
+                if event.keystroke.modifiers.platform && event.keystroke.key == "o" {
+                    log::info!("Cmd+O pressed - opening file dialog");
+                    this.open_file_dialog(cx);
+                } else if event.keystroke.key == "ArrowRight" {
+                    log::info!("Arrow Right pressed");
+                    this.next_page(cx);
+                } else if event.keystroke.key == "ArrowLeft" {
+                    log::info!("Arrow Left pressed");
+                    this.prev_page(cx);
+                } else if event.keystroke.key == "=" || event.keystroke.key == "+" {
+                    log::info!("Zoom in");
+                    this.zoom_in(cx);
+                } else if event.keystroke.key == "-" {
+                    log::info!("Zoom out");
+                    this.zoom_out(cx);
+                }
+            }))
             .child(self.render_toolbar(cx))
             .child(self.render_main_content(cx))
             .child(self.render_status_bar(cx))
     }
 }
 
+impl Focusable for PdfViewerApp {
+    fn focus_handle(&self, _cx: &gpui::App) -> FocusHandle {
+        self.focus_handle.clone()
+    }
+}
+
 impl PdfViewerApp {
     /// Render the top toolbar
-    fn render_toolbar(&self, _cx: &mut Context<Self>) -> Div {
+    fn render_toolbar(&self, cx: &mut Context<Self>) -> Div {
         div()
             .flex()
             .items_center()
@@ -183,7 +267,23 @@ impl PdfViewerApp {
             .px_4()
             .child(
                 // Left section - File operations
-                div().flex().gap_2().child("Open PDF")
+                div()
+                    .flex()
+                    .gap_2()
+                    .child(
+                        div()
+                            .px_3()
+                            .py_1()
+                            .bg(rgb(0x0e639c))
+                            .rounded_md()
+                            .cursor_pointer()
+                            .hover(|s| s.bg(rgb(0x1177bb)))
+                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _event: &MouseDownEvent, _window, cx| {
+                                log::info!("Open PDF button clicked!");
+                                this.open_file_dialog(cx);
+                            }))
+                            .child("📁 Open PDF")
+                    )
             )
             .child(
                 // Middle section - Navigation
@@ -194,13 +294,35 @@ impl PdfViewerApp {
                     .children(
                         if self.has_pdf() {
                             Some(
-                                div().child(
-                                    format!(
-                                        "Page {} / {}",
-                                        self.current_page_display(),
-                                        self.total_pages()
+                                div()
+                                    .flex()
+                                    .gap_2()
+                                    .items_center()
+                                    .child(
+                                        div()
+                                            .px_2()
+                                            .py_1()
+                                            .bg(rgb(0x3e3e42))
+                                            .rounded_md()
+                                            .child("◀ (←)")
                                     )
-                                )
+                                    .child(
+                                        div().child(
+                                            format!(
+                                                "Page {} / {}",
+                                                self.current_page_display(),
+                                                self.total_pages()
+                                            )
+                                        )
+                                    )
+                                    .child(
+                                        div()
+                                            .px_2()
+                                            .py_1()
+                                            .bg(rgb(0x3e3e42))
+                                            .rounded_md()
+                                            .child("▶ (→)")
+                                    )
                             )
                         } else {
                             None
@@ -214,7 +336,31 @@ impl PdfViewerApp {
                     .gap_2()
                     .children(
                         if self.has_pdf() {
-                            Some(div().child(format!("{}%", (self.zoom_level() * 100.0) as i32)))
+                            Some(
+                                div()
+                                    .flex()
+                                    .gap_2()
+                                    .items_center()
+                                    .child(
+                                        div()
+                                            .px_2()
+                                            .py_1()
+                                            .bg(rgb(0x3e3e42))
+                                            .rounded_md()
+                                            .child("− (−)")
+                                    )
+                                    .child(
+                                        div().child(format!("{}%", (self.zoom_level() * 100.0) as i32))
+                                    )
+                                    .child(
+                                        div()
+                                            .px_2()
+                                            .py_1()
+                                            .bg(rgb(0x3e3e42))
+                                            .rounded_md()
+                                            .child("+ (+)")
+                                    )
+                            )
                         } else {
                             None
                         }
@@ -241,34 +387,46 @@ impl PdfViewerApp {
                         .gap_4()
                         .child(div().child("⚠ Error").text_xl().text_color(rgb(0xff6b6b)))
                         .child(div().child(error.clone()).text_color(rgb(0xcccccc)))
-                } else if self.has_pdf() {
-                    // Show PDF content
+                } else if let Some(ref image_path) = self.current_page_image {
+                    // Display the rendered PDF page image
                     div()
                         .flex()
+                        .flex_col()
                         .items_center()
                         .justify_center()
-                        .w_full()
-                        .h_full()
+                        .gap_4()
+                        .child(
+                            // The actual PDF page image
+                            img(image_path.clone())
+                                .w_full()
+                                .max_w(px(800.0))
+                        )
+                        .child(
+                            // Page info overlay
+                            div()
+                                .child(
+                                    format!(
+                                        "Page {} of {} ({}% zoom)",
+                                        self.current_page_display(),
+                                        self.total_pages(),
+                                        (self.zoom_level() * 100.0) as i32
+                                    )
+                                )
+                                .text_sm()
+                                .text_color(rgb(0xcccccc))
+                        )
+                } else if self.has_pdf() {
+                    // PDF loaded but image not yet rendered
+                    div()
+                        .flex()
+                        .flex_col()
+                        .items_center()
+                        .gap_4()
                         .child(
                             div()
-                                .flex()
-                                .flex_col()
-                                .items_center()
-                                .gap_2()
-                                .child("PDF Rendering Area")
-                                .text_color(rgb(0x808080))
-                                .child(
-                                    div()
-                                        .child(
-                                            format!(
-                                                "Page {} of {} ({}% zoom)",
-                                                self.current_page_display(),
-                                                self.total_pages(),
-                                                (self.zoom_level() * 100.0) as i32
-                                            )
-                                        )
-                                        .text_sm()
-                                )
+                                .child("📄 Rendering PDF...")
+                                .text_2xl()
+                                .text_color(rgb(0x4CAF50))
                         )
                 } else {
                     // Show welcome screen
@@ -302,58 +460,5 @@ impl PdfViewerApp {
                     .text_color(rgb(0xffffff))
             )
             .child(div().child("Inkstone PDF Viewer").text_xs().text_color(rgb(0xe0e0e0)))
-    }
-}
-
-/// Implementation of Interactive trait for PdfViewerApp
-/// This allows the app to work with the viewer context system
-impl Interactive for PdfViewerApp {
-    type Event = ViewerEvent;
-    type Backend = GpuiBackend;
-
-    fn scene(&mut self, ctx: &mut ViewerContext<Self::Backend>) -> Scene {
-        if let Some(ref mut renderer) = self.pdf_renderer {
-            let page = ctx.page_nr();
-            let transform = ctx.view_transform();
-
-            // Render the page with the view transform from the context
-            renderer.render_page(page, transform).unwrap_or_else(|_| Scene::new())
-        } else {
-            Scene::new()
-        }
-    }
-
-    fn init(&mut self, _ctx: &mut ViewerContext<Self::Backend>, sender: Emitter<Self::Event>) {
-        self.emitter = Some(sender);
-    }
-
-    fn title(&self) -> String {
-        if let Some(ref name) = self.current_file_name() {
-            format!("{} - Inkstone PDF Viewer", name)
-        } else {
-            "Inkstone PDF Viewer".to_string()
-        }
-    }
-
-    fn window_size_hint(&self) -> Option<Vector2F> {
-        Some(Vector2F::new(1200.0, 800.0))
-    }
-
-    fn event(&mut self, ctx: &mut ViewerContext<Self::Backend>, event: Self::Event) {
-        match event {
-            ViewerEvent::LoadFile(_path) => {
-                // File loading will be handled externally through load_pdf
-            }
-            ViewerEvent::PageChanged(page) => {
-                ctx.goto_page(page);
-            }
-            ViewerEvent::ZoomChanged(zoom) => {
-                ctx.set_zoom(zoom);
-            }
-        }
-    }
-
-    fn cursor_moved(&mut self, _ctx: &mut ViewerContext<Self::Backend>, _pos: Vector2F) {
-        // Can be implemented for hover effects or interactive features
     }
 }

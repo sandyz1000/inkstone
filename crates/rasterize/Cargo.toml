@@ -15,4 +15,10 @@ pathfinder_resources = { workspace = true }
 inkfont = { path = "../font" }
 gl = "0.14.0"
 image = { workspace = true }
+log = { workspace = true }
+
+[target.'cfg(not(target_os = "macos"))'.dependencies]
 khronos-egl = { version = "6.0.0", features = ["static"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+libc = "0.2"

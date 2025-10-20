@@ -1,6 +1,3 @@
-pub mod app;
 pub mod renderer;
-pub mod backend;
 
-pub use app::PdfViewerApp;
-pub use backend::GpuiBackend;
+// Renderer module is still used for PDF rendering

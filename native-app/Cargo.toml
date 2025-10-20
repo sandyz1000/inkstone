@@ -3,7 +3,7 @@ name = "native-app"
 version = "0.1.0"
 authors.workspace = true
 edition.workspace = true
-description = "Native PDF viewer using GPUI"
+description = "Native PDF viewer using Iced"
 
 [features]
 unstable = []
@@ -26,14 +26,17 @@ log = { workspace = true }
 inkrender = { path = "../crates/render" }
 inkfont = { path = "../crates/font" }
 inkencoding = { path = "../crates/encoding" }
+rasterize = { path = "../crates/rasterize" }
 
 itertools = { workspace = true }
 image = { workspace = true }
 env_logger = { workspace = true }
 
-# GPUI dependencies
-gpui = "0.2.0"
-gpui-component = "0.2.0"
+# Iced dependencies - cleaner and more stable than GPUI
+iced = { version = "0.13", features = ["image", "tokio"] }
+
+# File dialog
+rfd = "0.15.4"
 
 [dev-dependencies]
 criterion = "0.7.0"
