@@ -58,6 +58,8 @@ getrandom = { version = "0.3.4", features = ["wasm_js"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 futures = "0.3"
+gloo-timers = { version = "0.3", features = ["futures"] }
+gloo-file = "0.3"
 
 # UI and Styling
 include_dir = "0.7"

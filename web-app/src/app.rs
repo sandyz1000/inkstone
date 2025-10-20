@@ -35,7 +35,7 @@ impl Default for AppState {
 
 #[component]
 pub fn App() -> Element {
-    let mut app_state = use_signal(AppState::default);
+    let app_state = use_signal(AppState::default);
 
     rsx! {
         div {

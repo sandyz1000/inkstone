@@ -1,11 +1,15 @@
 mod app;
 mod components;
 mod viewer;
-mod engine;
+// mod engine;
+// mod wasm; // Old wasm module not compatible with Interactive trait
 mod utils;
-mod wasm;
+mod backend;
+mod pdf_app;
+mod interactive_app;
 
 pub use app::App;
+pub use interactive_app::InteractiveApp;
 
 use wasm_bindgen::prelude::*;
 
@@ -17,9 +21,9 @@ pub fn run() {
     // Initialize logging
     dioxus_logger::init(dioxus_logger::tracing::Level::INFO).expect("Failed to initialize logger");
 
-    log::info!("🚀 Inkstone PDF Viewer starting...");
+    log::info!("🚀 Inkstone PDF Viewer starting (Interactive trait mode)...");
     log::info!("Built with Dioxus {} and WebAssembly", env!("CARGO_PKG_VERSION"));
 
-    // Launch the Dioxus app
-    dioxus::launch(app::App);
+    // Launch the Dioxus app with Interactive trait implementation
+    dioxus::launch(interactive_app::InteractiveApp);
 }

@@ -87,6 +87,20 @@ impl StandardCache {
             require_unique_unicode: false,
         }
     }
+
+    /// Create an empty cache for environments without standard fonts (e.g., WASM)
+    /// This will only work with PDFs that have embedded fonts
+    pub fn empty() -> Self {
+        StandardCache {
+            inner: SyncCache::new(),
+            dir: PathBuf::new(),
+            fonts: HashMap::new(),
+            dump: Dump::Never,
+            font_db: None,
+            require_unique_unicode: false,
+        }
+    }
+
     pub fn require_unique_unicode(&mut self, r: bool) {
         self.require_unique_unicode = r;
     }
