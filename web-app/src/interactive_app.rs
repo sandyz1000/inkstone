@@ -24,8 +24,8 @@ use crate::pdf_app::{ PdfViewerApp, ViewerEvent };
 /// State for the WebGL PDF renderer
 pub struct WebGlRenderer {
     renderer: Renderer<WebGlDevice>,
-    viewer_app: PdfViewerApp,
-    viewer_context: Context<DioxusBackend>,
+    app: PdfViewerApp,
+    context: Context<DioxusBackend>,
 }
 
 impl WebGlRenderer {
@@ -74,34 +74,34 @@ impl WebGlRenderer {
         let config_resource_loader = EmbeddedResourceLoader::new();
         let config = Rc::new(Config::new(Box::new(config_resource_loader)));
         let backend = DioxusBackend::new();
-        let mut viewer_context = Context::new(config, backend);
-        viewer_context.set_window_size(framebuffer_size.to_f32());
-        viewer_context.set_scale_factor(scale_factor);
+        let mut context = Context::new(config, backend);
+        context.set_window_size(framebuffer_size.to_f32());
+        context.set_scale_factor(scale_factor);
 
         // Create viewer app
-        let mut viewer_app = PdfViewerApp::new();
+        let mut app = PdfViewerApp::new();
 
         // Initialize with a dummy emitter (will be replaced when we have actual event handling)
         let emitter = Emitter { inner: ViewerEvent::NextPage };
-        viewer_app.init(&mut viewer_context, emitter);
+        app.init(&mut context, emitter);
 
         Ok(Self {
             renderer,
-            viewer_app,
-            viewer_context,
+            app,
+            context,
         })
     }
 
     pub fn load_pdf(&mut self, data: Vec<u8>) -> Result<usize, String> {
-        let num_pages = self.viewer_app.load_pdf(data)?;
-        self.viewer_context.num_pages = num_pages;
-        self.viewer_context.request_redraw();
+        let num_pages = self.app.load_pdf(data)?;
+        self.context.num_pages = num_pages;
+        self.context.request_redraw();
         Ok(num_pages)
     }
 
     pub fn render(&mut self) {
         // Generate scene using Interactive trait
-        let mut scene = self.viewer_app.scene(&mut self.viewer_context);
+        let mut scene = self.app.scene(&mut self.context);
 
         // Build and render the scene
         let options = BuildOptions {
@@ -112,33 +112,33 @@ impl WebGlRenderer {
 
         scene.build_and_render(&mut self.renderer, options, SequentialExecutor);
 
-        self.viewer_context.redraw_requested = false;
+        self.context.redraw_requested = false;
     }
 
     pub fn handle_event(&mut self, event: ViewerEvent) {
-        self.viewer_app.event(&mut self.viewer_context, event);
-        if self.viewer_context.redraw_requested {
+        self.app.event(&mut self.context, event);
+        if self.context.redraw_requested {
             self.render();
         }
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {
         let new_size = Vector2F::new(width as f32, height as f32);
-        self.viewer_context.set_window_size(new_size);
+        self.context.set_window_size(new_size);
 
         log::info!("Resized to {}x{}", width, height);
 
-        if self.viewer_context.redraw_requested {
+        if self.context.redraw_requested {
             self.render();
         }
     }
 
     pub fn get_page_info(&self) -> (usize, usize) {
-        (self.viewer_context.page_nr + 1, self.viewer_context.num_pages)
+        (self.context.page_nr + 1, self.context.num_pages)
     }
 
     pub fn get_zoom(&self) -> f32 {
-        self.viewer_context.scale
+        self.context.scale
     }
 }
 
