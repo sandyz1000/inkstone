@@ -4,12 +4,15 @@ use std::sync::Arc;
 use pathfinder_geometry::rect::RectF;
 use pathfinder_geometry::transform2d::Transform2F;
 use pathfinder_renderer::scene::Scene;
+use pathfinder_color::ColorF;
 use pdf::any::AnySync;
 use pdf::error::PdfError;
 use pdf::file::{ File as PdfFile, FileOptions, NoLog, SyncCache };
 use pdf::object::PlainRef;
+use image::RgbaImage;
 
 use inkrender::{ page_bounds, render_page, Cache as RenderCache, SceneBackend };
+use rasterize::Rasterizer;
 
 type PdfFileType = PdfFile<
     Vec<u8>,
@@ -74,6 +77,27 @@ impl PdfRenderer {
         )?;
 
         Ok(backend.finish())
+    }
+
+    /// Render a specific page to an image (RGBA)
+    pub fn render_page_to_image(
+        &mut self,
+        page_num: usize,
+        dpi: f32,
+    ) -> Result<RgbaImage, String> {
+        let scale = Transform2F::from_scale(dpi / 25.4);
+        let scene = self.render_page(page_num, scale)?;
+        
+        // Spawn a separate thread to do OpenGL rendering
+        // This prevents conflicts with the main UI rendering thread
+        let handle = std::thread::spawn(move || {
+            let mut rasterizer = Rasterizer::new();
+            rasterizer.rasterize(scene, Some(ColorF::white()))
+        });
+        
+        // Wait for the rendering to complete
+        handle.join()
+            .map_err(|_| "Rendering thread panicked".to_string())
     }
 
     /// Get the bounding box of a page
