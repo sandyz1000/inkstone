@@ -10,9 +10,9 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 # Dioxus Framework
-dioxus = { version = "0.6", features = ["web"] }
-dioxus-web = "0.6"
-dioxus-logger = "0.6.2"
+dioxus = { version = "0.7.2", features = ["web"] }
+dioxus-web = "0.7.2"
+dioxus-logger = "0.7.2"
 
 # PDF and Rendering
 viewer = { path = "../crates/viewer" }

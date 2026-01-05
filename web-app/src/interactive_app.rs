@@ -202,34 +202,33 @@ pub fn InteractiveApp() -> Element {
     // File input handler using gloo-file
     let on_file_change = move |evt: Event<FormData>| {
         async move {
-            if let Some(file_engine) = evt.files() {
-                let files = file_engine.files();
+            let files = evt.files();
 
-                if let Some(file_name) = files.first() {
-                    log::info!("Reading PDF file: {}", file_name);
+            if let Some(file_name) = files.first() {
+                log::info!("Reading PDF file: {}", file_name.name());
 
-                    // Read file using gloo-file
-                    if let Some(data) = file_engine.read_file(file_name).await {
-                        log::info!("File read successfully: {} bytes", data.len());
+                // Read file using gloo-file
+                if let Ok(data) = file_name.read_bytes().await {
+                    let data = data.to_vec();
+                    log::info!("File read successfully: {} bytes", data.len());
 
-                        if let Some(renderer_ref) = renderer.read().as_ref() {
-                            let mut renderer_mut = renderer_ref.borrow_mut();
-                            match renderer_mut.load_pdf(data) {
-                                Ok(num_pages) => {
-                                    log::info!("PDF loaded with {} pages", num_pages);
-                                    renderer_mut.render();
+                    if let Some(renderer_ref) = renderer.read().as_ref() {
+                        let mut renderer_mut = renderer_ref.borrow_mut();
+                        match renderer_mut.load_pdf(data) {
+                            Ok(num_pages) => {
+                                log::info!("PDF loaded with {} pages", num_pages);
+                                renderer_mut.render();
 
-                                    let (current, total) = renderer_mut.get_page_info();
-                                    app_state.write().current_page = current;
-                                    app_state.write().total_pages = total;
-                                    app_state.write().file_loaded = true;
-                                }
-                                Err(e) => log::error!("Failed to load PDF: {}", e),
+                                let (current, total) = renderer_mut.get_page_info();
+                                app_state.write().current_page = current;
+                                app_state.write().total_pages = total;
+                                app_state.write().file_loaded = true;
                             }
+                            Err(e) => log::error!("Failed to load PDF: {}", e),
                         }
-                    } else {
-                        log::error!("Failed to read file");
                     }
+                } else {
+                    log::error!("Failed to read file");
                 }
             }
         }

@@ -1,3 +1,5 @@
+pub mod app;
 pub mod renderer;
 
-// Renderer module is still used for PDF rendering
+pub use app::PdfViewerApp;
+pub use renderer::PdfRenderer;
